@@ -4,7 +4,7 @@ set(Catch2_PATH "third-party/")
 #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_executable(unitc_tests "src/test_linalg.cpp")
-
+target_compile_options(unitc_tests PRIVATE "-DDEBUG=1")
 target_link_libraries(unitc_tests PRIVATE ${AER_LIBRARIES})
                             #PRIVATE Catch2::Catch2 )
 

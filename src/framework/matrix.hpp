@@ -189,11 +189,11 @@ inline matrix<T>::matrix(){}
 template <class T>
 inline matrix<T>::matrix(size_t rows, size_t cols)
     : rows_(rows), cols_(cols), size_(rows * cols), LD_(rows),
-      outputstyle_(Column), mat_(new T[size_]) {}
+      outputstyle_(Matrix), mat_(new T[size_]) {}
 // constructs an empty matrix of size rows, cols and sets outputstyle to zero
 template <class T>
 inline matrix<T>::matrix(size_t dim2)
-    : size_(dim2), outputstyle_(Column), mat_(new T[size_]) {
+    : size_(dim2), outputstyle_(Matrix), mat_(new T[size_]) {
   // constructs a square matrix of dims sqrt(size)*sqrt(size)
   // PLEASE DO NOT CHANGE THIS AS IT IS USED BY ODESOLVER
   //  size_t dim2 = rhovec.GetRows();
