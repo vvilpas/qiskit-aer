@@ -262,7 +262,7 @@ template <class T> inline void matrix<T>::initialize(size_t rows, size_t cols) {
     cols_ = cols;
     size_ = rows_ * cols_;
     LD_ = rows;
-    mat_ = new T[size_];
+    mat_ = new T[size_]{0.0};
     // std::cout << "Assignement (reassigment), size " << size_ << " rows_ " <<
     // rows_ << " cols " << cols_ << " LD "<< LD_ <<  std::endl;
   }
