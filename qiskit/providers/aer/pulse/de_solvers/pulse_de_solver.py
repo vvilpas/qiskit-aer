@@ -24,7 +24,30 @@ import numpy as np
 from scipy.integrate import ode
 from scipy.integrate._ode import zvode
 # pylint: disable=no-name-in-module
-from .pulse_utils import td_ode_rhs_static
+from .pulse_utils import td_ode_rhs_static, create_sundials_integrator
+
+def construct_sundials_integrator(exp, op_system):
+    """
+
+    :param exp:
+    :param op_system:
+    :return:
+    """
+    global_data = op_system.global_data
+    ode_options = op_system.ode_options
+    channels = dict(op_system.channels)
+
+    # Init register
+    register = np.ones(global_data['n_registers'], dtype=np.uint8)
+
+    cvode = create_sundials_integrator(0.0, global_data['initial_state'],
+                                      global_data, exp, op_system.system, channels, register)
+
+    cvode.set_tolerances(ode_options.rtol, ode_options.atol)
+    cvode.set_max_nsteps(ode_options.nsteps)
+    cvode.set_maximum_order(ode_options.order)
+    cvode.set_step_limits(ode_options.max_step, ode_options.min_step, ode_options.first_step)
+    return cvode
 
 
 def construct_pulse_zvode_solver(exp, op_system):

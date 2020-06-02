@@ -39,6 +39,17 @@ bool almost_equal(T f1, T f2,
          max_relative_diff * std::max(std::abs(f1), std::abs(f2));
 }
 
+  template <typename T, typename = enable_if_numeric_t<T>>
+  bool almost_equal(std::complex<T> f1, std::complex<T> f2,
+                    T max_diff = std::numeric_limits<T>::epsilon(),
+                    T max_relative_diff = std::numeric_limits<T>::epsilon()) {
+    T diff = std::abs(f1 - f2);
+    if (diff <= max_diff) return true;
+    return diff <=
+           max_relative_diff * std::max(std::abs(f1), std::abs(f2));
+  }
+
+
 //------------------------------------------------------------------------------
 }  // namespace Linalg
 //------------------------------------------------------------------------------

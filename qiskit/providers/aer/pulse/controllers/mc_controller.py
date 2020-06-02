@@ -22,7 +22,7 @@ import time
 import numpy as np
 from scipy.linalg.blas import get_blas_funcs
 from qiskit.tools.parallel import parallel_map, CPU_COUNT
-from ..de_solvers.pulse_de_solver import construct_pulse_zvode_solver
+from ..de_solvers.pulse_de_solver import construct_pulse_zvode_solver, construct_sundials_integrator
 from ..de_solvers.pulse_utils import (cy_expect_psi_csr, occ_probabilities,
                                       write_shots_memory, spmv_csr)
 
@@ -119,7 +119,8 @@ def monte_carlo_evolution(seed, exp, op_system):
     cinds = np.arange(global_data['c_num'])
     n_dp = np.zeros(global_data['c_num'], dtype=float)
 
-    ODE = construct_pulse_zvode_solver(exp, op_system)
+    #ODE = construct_pulse_zvode_solver(exp, op_system)
+    ODE = construct_sundials_integrator(exp, op_system)
 
     # RUN ODE UNTIL EACH TIME IN TLIST
     for stop_time in tlist:
@@ -146,7 +147,7 @@ def monte_carlo_evolution(seed, exp, op_system):
                         log(norm2_prev / norm2_psi) * (t_final - t_prev)
                     ODE._y = y_prev
                     ODE.t = t_prev
-                    ODE._integrator.call_args[3] = 1
+                    # ODE._integrator.call_args[3] = 1
                     ODE.integrate(t_guess, step=0)
                     if not ODE.successful():
                         raise Exception(
@@ -190,7 +191,7 @@ def monte_carlo_evolution(seed, exp, op_system):
 
                 state /= dznrm2(state)
                 ODE._y = state
-                ODE._integrator.call_args[3] = 1
+                # ODE._integrator.call_args[3] = 1
                 rand_vals = rng.rand(2)
 
         # after while loop (Do measurement or conditional)

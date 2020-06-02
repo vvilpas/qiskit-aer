@@ -21,7 +21,7 @@ import time
 import numpy as np
 from scipy.linalg.blas import get_blas_funcs
 from qiskit.tools.parallel import parallel_map, CPU_COUNT
-from ..de_solvers.pulse_de_solver import construct_pulse_zvode_solver
+from ..de_solvers.pulse_de_solver import construct_pulse_zvode_solver, construct_sundials_integrator
 
 # Imports from qutip_extra_lite
 from ..de_solvers.pulse_utils import occ_probabilities, write_shots_memory
@@ -122,7 +122,8 @@ def unitary_evolution(exp, op_system):
         Exception: Error in ODE solver.
     """
 
-    ODE = construct_pulse_zvode_solver(exp, op_system)
+    #ODE = construct_pulse_zvode_solver(exp, op_system)
+    ODE = construct_sundials_integrator(exp, op_system)
 
     tlist = exp['tlist']
 

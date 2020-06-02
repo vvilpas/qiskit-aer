@@ -95,6 +95,123 @@ complex_t chan_value(
     return out;
 }
 
+void inner_ode_rhs(double t, const complex_t* const vec, complex_t* out, int  num_rows,
+                   py::object the_global_data,
+                   py::object the_exp,
+                   py::object the_system,
+                   py::object the_reg)
+{
+  PyObject * py_global_data = the_global_data.ptr();
+  PyObject * py_exp = the_exp.ptr();
+  PyObject * py_system = the_system.ptr();
+  PyObject * py_register = the_reg.ptr();
+
+  if(py_global_data == nullptr ||
+     py_exp == nullptr ||
+     py_system == nullptr ||
+     py_register == nullptr){
+    std::string msg = "These arguments cannot be null: ";
+    msg += (py_global_data == nullptr ? "py_global_data " : "" );
+    msg += (py_exp == nullptr ? "py_exp " : "" );
+    msg += (py_system == nullptr ? "py_system " : "" );
+    msg += (py_register == nullptr ? "py_register " : "" );
+    throw std::invalid_argument(msg);
+  }
+
+  auto pulses = get_ordered_map_from_dict_item<std::string, std::vector<NpArray<double>>>(py_exp, "channels");
+  auto freqs = get_vec_from_dict_item<double>(py_global_data, "freqs");
+  auto pulse_array = get_value_from_dict_item<NpArray<complex_t>>(py_global_data, "pulse_array");
+  auto pulse_indices = get_value_from_dict_item<NpArray<int>>(py_global_data, "pulse_indices");
+  auto reg = get_value<NpArray<uint8_t>>(py_register);
+
+  std::unordered_map<std::string, complex_t> chan_values;
+  chan_values.reserve(pulses.size());
+  for(const auto& elem : enumerate(pulses)){
+/**
+ * eleme is map of string as key type, and vector of vectors of doubles.
+ * elem["D0"] = [[0.,1.,2.][0.,1.,2.]]
+ **/
+    auto i = elem.first;
+    auto channel = elem.second.first;
+    auto pulse = elem.second.second;
+
+    auto val = chan_value(t, i, freqs[i], pulse[0], pulse_array,
+                          pulse_indices, pulse[1], reg);
+    chan_values.emplace(channel, val);
+  }
+
+// 4. Eval the time-dependent terms and do SPMV.
+  auto systems = get_value<std::vector<TermExpression>>(py_system);
+  auto vars = get_vec_from_dict_item<double>(py_global_data, "vars");
+  auto vars_names = get_vec_from_dict_item<std::string>(py_global_data, "vars_names");
+  auto num_h_terms = get_value_from_dict_item<long>(py_global_data, "num_h_terms");
+  auto datas = get_vec_from_dict_item<NpArray<complex_t>>(py_global_data, "h_ops_data");
+  auto idxs = get_vec_from_dict_item<NpArray<int>>(py_global_data, "h_ops_ind");
+  auto ptrs = get_vec_from_dict_item<NpArray<int>>(py_global_data, "h_ops_ptr");
+  auto energy = get_value_from_dict_item<NpArray<double>>(py_global_data, "h_diag_elems");
+  for(int h_idx = 0; h_idx < num_h_terms; h_idx++){
+// TODO: Refactor
+    std::string term;
+    if(h_idx == systems.size() && num_h_terms > systems.size()){
+      term = "1.0";
+    }else if(h_idx < systems.size()){
+      term = systems[h_idx].term;
+    }else{
+      continue;
+    }
+
+    auto td = evaluate_hamiltonian_expression(term, vars, vars_names, chan_values);
+    if(std::abs(td) > 1e-15){
+      for(auto i=0; i<num_rows; i++){
+        complex_t dot = {0., 0.};
+        auto row_start = ptrs[h_idx][i];
+        auto row_end = ptrs[h_idx][i+1];
+        for(auto j = row_start; j<row_end; ++j){
+          auto tmp_idx = idxs[h_idx][j];
+          auto osc_term =
+              std::exp(
+                  complex_t(0.,1.) * (energy[i] - energy[tmp_idx]) * t
+              );
+          complex_t coef = (i < tmp_idx ? std::conj(td) : td);
+          dot += coef * osc_term * datas[h_idx][j] * vec[tmp_idx];
+
+        }
+        out[i] += dot;
+      }
+    }
+  } /* End of systems */
+
+  for(auto i=0; i < num_rows; ++i){
+    out[i] += complex_t(0.,1.) * energy[i] * vec[i];
+  }
+}
+
+void td_ode_rhs_vec(double t, const std::vector<complex_t>& y, std::vector<complex_t>& y_dot,
+                    py::object the_global_data,
+                    py::object the_exp,
+                    py::object the_system,
+                    py::object the_channels,
+                    py::object the_reg){
+  inner_ode_rhs(t, y.data(), y_dot.data(), y.size(), the_global_data, the_exp, the_system, the_reg);
+}
+
+void td_ode_rhs_numpy(double t, const py::array_t<complex_t>& y, py::array_t<complex_t>& y_dot,
+                    py::object the_global_data,
+                    py::object the_exp,
+                    py::object the_system,
+                    py::object the_channels,
+                    py::object the_reg){
+  complex_t* y_raw = static_cast<complex_t *>(y.request().ptr);
+  complex_t* y_dot_raw = static_cast<complex_t *>(y_dot.request().ptr);
+
+  inner_ode_rhs(t, y_raw, y_dot_raw, y.size(), the_global_data, the_exp, the_system, the_reg);
+
+  complex_t* y_raw_2 = static_cast<complex_t *>(y.request().ptr);
+  complex_t* y_dot_raw_2 = static_cast<complex_t *>(y_dot.request().ptr);
+  *y_raw_2 + *y_dot_raw_2;
+}
+
+
 py::array_t<complex_t> td_ode_rhs(double t,
         py::array_t<complex_t> the_vec,
         py::object the_global_data,
@@ -116,23 +233,8 @@ py::array_t<complex_t> td_ode_rhs(double t,
     //spdlog::flush_on(spdlog::level::debug);
 
     PyArrayObject * py_vec = reinterpret_cast<PyArrayObject *>(the_vec.ptr());
-    PyObject * py_global_data = the_global_data.ptr();
-    PyObject * py_exp = the_exp.ptr();
-    PyObject * py_system = the_system.ptr();
-    PyObject * py_register = the_reg.ptr();
-
-    if(py_vec == nullptr ||
-       py_global_data == nullptr ||
-       py_exp == nullptr ||
-       py_system == nullptr ||
-       py_register == nullptr){
-           std::string msg = "These arguments cannot be null: ";
-           msg += (py_vec == nullptr ? "py_vec " : "" );
-           msg += (py_global_data == nullptr ? "py_global_data " : "" );
-           msg += (py_exp == nullptr ? "py_exp " : "" );
-           msg += (py_system == nullptr ? "py_system " : "" );
-           msg += (py_register == nullptr ? "py_register " : "" );
-           throw std::invalid_argument(msg);
+    if(py_vec == nullptr){
+      throw std::invalid_argument("Argument py_vec cannot be null");
     }
 
     auto vec = get_value<NpArray<complex_t>>(py_vec);
@@ -140,72 +242,8 @@ py::array_t<complex_t> td_ode_rhs(double t,
     auto out = static_cast<complex_t *>(PyDataMem_NEW(num_rows * sizeof(complex_t)));
    	memset(&out[0],0,num_rows * sizeof(complex_t));
 
-    auto pulses = get_ordered_map_from_dict_item<std::string, std::vector<NpArray<double>>>(py_exp, "channels");
-    auto freqs = get_vec_from_dict_item<double>(py_global_data, "freqs");
-    auto pulse_array = get_value_from_dict_item<NpArray<complex_t>>(py_global_data, "pulse_array");
-    auto pulse_indices = get_value_from_dict_item<NpArray<int>>(py_global_data, "pulse_indices");
-    auto reg = get_value<NpArray<uint8_t>>(py_register);
-
-    std::unordered_map<std::string, complex_t> chan_values;
-    chan_values.reserve(pulses.size());
-    for(const auto& elem : enumerate(pulses)){
-        /**
-         * eleme is map of string as key type, and vector of vectors of doubles.
-         * elem["D0"] = [[0.,1.,2.][0.,1.,2.]]
-         **/
-        auto i = elem.first;
-        auto channel = elem.second.first;
-        auto pulse = elem.second.second;
-
-        auto val = chan_value(t, i, freqs[i], pulse[0], pulse_array,
-                              pulse_indices, pulse[1], reg);
-        chan_values.emplace(channel, val);
-    }
-
-    // 4. Eval the time-dependent terms and do SPMV.
-    auto systems = get_value<std::vector<TermExpression>>(py_system);
-    auto vars = get_vec_from_dict_item<double>(py_global_data, "vars");
-    auto vars_names = get_vec_from_dict_item<std::string>(py_global_data, "vars_names");
-    auto num_h_terms = get_value_from_dict_item<long>(py_global_data, "num_h_terms");
-    auto datas = get_vec_from_dict_item<NpArray<complex_t>>(py_global_data, "h_ops_data");
-    auto idxs = get_vec_from_dict_item<NpArray<int>>(py_global_data, "h_ops_ind");
-    auto ptrs = get_vec_from_dict_item<NpArray<int>>(py_global_data, "h_ops_ptr");
-    auto energy = get_value_from_dict_item<NpArray<double>>(py_global_data, "h_diag_elems");
-    for(int h_idx = 0; h_idx < num_h_terms; h_idx++){
-        // TODO: Refactor
-        std::string term;
-        if(h_idx == systems.size() && num_h_terms > systems.size()){
-            term = "1.0";
-        }else if(h_idx < systems.size()){
-            term = systems[h_idx].term;
-        }else{
-            continue;
-        }
-
-        auto td = evaluate_hamiltonian_expression(term, vars, vars_names, chan_values);
-        if(std::abs(td) > 1e-15){
-            for(auto i=0; i<num_rows; i++){
-                complex_t dot = {0., 0.};
-                auto row_start = ptrs[h_idx][i];
-                auto row_end = ptrs[h_idx][i+1];
-                for(auto j = row_start; j<row_end; ++j){
-                    auto tmp_idx = idxs[h_idx][j];
-                    auto osc_term =
-                        std::exp(
-                            complex_t(0.,1.) * (energy[i] - energy[tmp_idx]) * t
-                        );
-                    complex_t coef = (i < tmp_idx ? std::conj(td) : td);
-                    dot += coef * osc_term * datas[h_idx][j] * vec[tmp_idx];
-
-                }
-                out[i] += dot;
-            }
-        }
-    } /* End of systems */
-
-    for(auto i=0; i < num_rows; ++i){
-        out[i] += complex_t(0.,1.) * energy[i] * vec[i];
-    }
+    inner_ode_rhs(t, vec.data, out, num_rows, the_global_data, the_exp, the_system, the_reg);
 
     return py::array(num_rows, out);
 }
+
