@@ -30,7 +30,25 @@
 
 namespace AER {
 namespace DensityMatrix {
-  
+
+// OpSet of supported instructions
+const Operations::OpSet StateOpSet(
+  // Op types
+  {Operations::OpType::gate, Operations::OpType::measure,
+    Operations::OpType::reset, Operations::OpType::snapshot,
+    Operations::OpType::barrier, Operations::OpType::bfunc,
+    Operations::OpType::roerror, Operations::OpType::matrix,
+    Operations::OpType::diagonal_matrix, Operations::OpType::kraus,
+    Operations::OpType::superop},
+  // Gates
+  {"U", "CX", "u1", "u2", "u3", "cx", "cz", "swap", "id", "x", "y",
+    "z", "h", "s", "sdg", "t", "tdg", "ccx"},
+  // Snapshots
+  {"density_matrix", "memory", "register", "probabilities",
+    "probabilities_with_variance", "expectation_value_pauli",
+    "expectation_value_pauli_with_variance"}
+);
+
 // Allowed gates enum class
 enum class Gates {
   u1, u2, u3, id, x, y, z, h, s, sdg, t, tdg, // single qubit
@@ -41,10 +59,10 @@ enum class Gates {
 // Allowed snapshots enum class
 enum class Snapshots {
   cmemory, cregister, densitymatrix,
-  probs, probs_var
+  probs, probs_var,
+  expval_pauli, expval_pauli_var
   /* TODO: The following expectation value snapshots still need to be implemented */
-  //,expval_pauli, expval_pauli_var,
-  //expval_matrix, expval_matrix_var
+  //,expval_matrix, expval_matrix_var
 };
 
 //=========================================================================
@@ -56,7 +74,7 @@ class State : public Base::State<densmat_t> {
 public:
   using BaseState = Base::State<densmat_t>;
 
-  State() = default;
+  State() : BaseState(StateOpSet) {}
   virtual ~State() = default;
 
   //-----------------------------------------------------------------------
@@ -65,34 +83,6 @@ public:
 
   // Return the string name of the State class
   virtual std::string name() const override {return densmat_t::name();}
-
-  // Return the set of qobj instruction types supported by the State
-  virtual Operations::OpSet::optypeset_t allowed_ops() const override {
-    return Operations::OpSet::optypeset_t({
-      Operations::OpType::gate,
-      Operations::OpType::measure,
-      Operations::OpType::reset,
-      Operations::OpType::snapshot,
-      Operations::OpType::barrier,
-      Operations::OpType::bfunc,
-      Operations::OpType::roerror,
-      Operations::OpType::matrix,
-      Operations::OpType::kraus,
-      Operations::OpType::superop
-    });
-  }
-
-  // Return the set of qobj gate instruction names supported by the State
-  virtual stringset_t allowed_gates() const override {
-    return {"U", "CX", "u1", "u2", "u3", "cx", "cz", "swap",
-            "id", "x", "y", "z", "h", "s", "sdg", "t", "tdg", "ccx"};
-  }
-
-  // Return the set of qobj snapshot types supported by the State
-  virtual stringset_t allowed_snapshots() const override {
-    return {"density_matrix", "memory", "register",
-            "probabilities", "probabilities_with_variance"};
-  }
 
   // Apply a sequence of operations by looping over list
   // If the input is not in allowed_ops an exeption will be raised.
@@ -292,7 +282,9 @@ const stringmap_t<Snapshots> State<densmat_t>::snapshotset_({
   {"probabilities", Snapshots::probs},
   {"probabilities_with_variance", Snapshots::probs_var},
   {"memory", Snapshots::cmemory},
-  {"register", Snapshots::cregister}
+  {"register", Snapshots::cregister},
+  {"expectation_value_pauli", Snapshots::expval_pauli},
+  {"expectation_value_pauli_with_variance", Snapshots::expval_pauli_var}
 });
 
 
@@ -360,12 +352,8 @@ template <class densmat_t>
 size_t State<densmat_t>::required_memory_mb(uint_t num_qubits,
                                             const std::vector<Operations::Op> &ops)
                                             const {
-  // An n-qubit state vector as 2^n complex doubles
-  // where each complex double is 16 bytes
   (void)ops; // avoid unused variable compiler warning
-  size_t shift_mb = std::max<int_t>(0, num_qubits + 4 - 20);
-  size_t mem_mb = 1ULL << shift_mb;
-  return mem_mb;
+  return BaseState::qreg_.required_memory_mb(2 * num_qubits);
 }
 
 template <class densmat_t>
@@ -391,41 +379,44 @@ void State<densmat_t>::apply_ops(const std::vector<Operations::Op> &ops,
   // Simple loop over vector of input operations
   for (const auto op: ops) {
     // If conditional op check conditional
-    if (BaseState::creg_.check_conditional(op) == false)
-      return;
-    switch (op.type) {
-      case Operations::OpType::barrier:
-        break;
-      case Operations::OpType::reset:
-        apply_reset(op.qubits);
-        break;
-      case Operations::OpType::measure:
-        apply_measure(op.qubits, op.memory, op.registers, rng);
-        break;
-      case Operations::OpType::bfunc:
-        BaseState::creg_.apply_bfunc(op);
-        break;
-      case Operations::OpType::roerror:
-        BaseState::creg_.apply_roerror(op, rng);
-        break;
-      case Operations::OpType::gate:
-        apply_gate(op);
-        break;
-      case Operations::OpType::snapshot:
-        apply_snapshot(op, data);
-        break;
-      case Operations::OpType::matrix:
-        apply_matrix(op.qubits, op.mats[0]);
-        break;
-      case Operations::OpType::superop:
-        BaseState::qreg_.apply_superop_matrix(op.qubits, Utils::vectorize_matrix(op.mats[0]));
-        break;
-      case Operations::OpType::kraus:
-        apply_kraus(op.qubits, op.mats);
-        break;
-      default:
-        throw std::invalid_argument("DensityMatrix::State::invalid instruction \'" +
-                                    op.name + "\'.");
+    if (BaseState::creg_.check_conditional(op)) {
+      switch (op.type) {
+        case Operations::OpType::barrier:
+          break;
+        case Operations::OpType::reset:
+          apply_reset(op.qubits);
+          break;
+        case Operations::OpType::measure:
+          apply_measure(op.qubits, op.memory, op.registers, rng);
+          break;
+        case Operations::OpType::bfunc:
+          BaseState::creg_.apply_bfunc(op);
+          break;
+        case Operations::OpType::roerror:
+          BaseState::creg_.apply_roerror(op, rng);
+          break;
+        case Operations::OpType::gate:
+          apply_gate(op);
+          break;
+        case Operations::OpType::snapshot:
+          apply_snapshot(op, data);
+          break;
+        case Operations::OpType::matrix:
+          apply_matrix(op.qubits, op.mats[0]);
+          break;
+        case Operations::OpType::diagonal_matrix:
+          BaseState::qreg_.apply_diagonal_unitary_matrix(op.qubits, op.params);
+          break;
+        case Operations::OpType::superop:
+          BaseState::qreg_.apply_superop_matrix(op.qubits, Utils::vectorize_matrix(op.mats[0]));
+          break;
+        case Operations::OpType::kraus:
+          apply_kraus(op.qubits, op.mats);
+          break;
+        default:
+          throw std::invalid_argument("DensityMatrix::State::invalid instruction \'" +
+                                      op.name + "\'.");
+      }
     }
   }
 }
@@ -449,7 +440,7 @@ void State<densmat_t>::apply_snapshot(const Operations::Op &op,
       data.add_average_snapshot("density_matrix",
                                 op.string_params[0],
                                 BaseState::creg_.memory_hex(),
-                                BaseState::qreg_,
+                                BaseState::qreg_.matrix(),
                                 false);
       break;
     case Snapshots::cmemory:
@@ -466,17 +457,16 @@ void State<densmat_t>::apply_snapshot(const Operations::Op &op,
       // get probs as hexadecimal
       snapshot_probabilities(op, data, true);
       break;
-    /* TODO
     case Snapshots::expval_pauli: {
       snapshot_pauli_expval(op, data, false);
     } break;
-    case Snapshots::expval_matrix: {
-      snapshot_matrix_expval(op, data, false);
-    }  break;
-    
     case Snapshots::expval_pauli_var: {
       snapshot_pauli_expval(op, data, true);
     } break;
+    /* TODO
+    case Snapshots::expval_matrix: {
+      snapshot_matrix_expval(op, data, false);
+    }  break;
     case Snapshots::expval_matrix_var: {
       snapshot_matrix_expval(op, data, true);
     }  break;
@@ -490,8 +480,8 @@ void State<densmat_t>::apply_snapshot(const Operations::Op &op,
 
 template <class densmat_t>
 void State<densmat_t>::snapshot_probabilities(const Operations::Op &op,
-                                               ExperimentData &data,
-                                               bool variance) {
+                                              ExperimentData &data,
+                                              bool variance) {
   // get probs as hexadecimal
   auto probs = Utils::vec2ket(measure_probs(op.qubits),
                               json_chop_threshold_, 16);
@@ -502,6 +492,31 @@ void State<densmat_t>::snapshot_probabilities(const Operations::Op &op,
                             variance);
 }
 
+
+template <class densmat_t>
+void State<densmat_t>::snapshot_pauli_expval(const Operations::Op &op,
+                                             ExperimentData &data,
+                                             bool variance) {
+  // Check empty edge case
+  if (op.params_expval_pauli.empty()) {
+    throw std::invalid_argument("Invalid expval snapshot (Pauli components are empty).");
+  }
+
+  // Accumulate expval components
+  complex_t expval(0., 0.);
+  for (const auto &param : op.params_expval_pauli) {
+    const auto& coeff = param.first;
+    const auto& pauli = param.second;
+    expval += coeff * BaseState::qreg_.expval_pauli(op.qubits, pauli);
+  }
+
+  // Add to snapshot
+  Utils::chop_inplace(expval, json_chop_threshold_);
+  data.add_average_snapshot("expectation_value",
+                            op.string_params[0],
+                            BaseState::creg_.memory_hex(),
+                            expval, variance);
+}
 
 //=========================================================================
 // Implementation: Matrix multiplication

@@ -16,7 +16,7 @@ NoiseModel class integration tests
 
 import unittest
 from test.terra import common
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, execute
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 from qiskit.compiler import assemble, transpile
 from qiskit.providers.aer.backends import QasmSimulator
 from qiskit.providers.aer.noise import NoiseModel
@@ -24,6 +24,10 @@ from qiskit.providers.aer.noise.errors.standard_errors import pauli_error
 from qiskit.providers.aer.noise.errors.standard_errors import reset_error
 from qiskit.providers.aer.noise.errors.standard_errors import amplitude_damping_error
 from qiskit.test import mock
+
+# Backwards compatibility for Terra <= 0.13
+if not hasattr(QuantumCircuit, 'i'):
+    QuantumCircuit.i = QuantumCircuit.iden
 
 
 class TestNoise(common.QiskitAerTestCase):
@@ -38,10 +42,10 @@ class TestNoise(common.QiskitAerTestCase):
         for _ in range(30):
             # Add noisy identities
             circuit.barrier(qr)
-            circuit.iden(qr)
+            circuit.i(qr)
         circuit.barrier(qr)
         circuit.measure(qr, cr)
-        shots = 2000
+        shots = 4000
         backend = QasmSimulator()
         # test noise model
         error = amplitude_damping_error(0.75, 0.25)
@@ -52,7 +56,7 @@ class TestNoise(common.QiskitAerTestCase):
         circuit = transpile(circuit, basis_gates=noise_model.basis_gates)
         qobj = assemble([circuit], backend, shots=shots)
         result = backend.run(qobj, noise_model=noise_model).result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_counts(result, [circuit], [target], delta=0.05 * shots)
 
     def test_noise_model_basis_gates(self):

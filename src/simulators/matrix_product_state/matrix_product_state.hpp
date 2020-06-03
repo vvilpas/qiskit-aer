@@ -40,6 +40,24 @@
 namespace AER {
 namespace MatrixProductState {
 
+// OpSet of supported instructions
+const Operations::OpSet StateOpSet(
+  {Operations::OpType::gate, Operations::OpType::measure,
+  Operations::OpType::reset, Operations::OpType::initialize,
+  Operations::OpType::snapshot, Operations::OpType::barrier,
+  Operations::OpType::bfunc, Operations::OpType::roerror,
+  Operations::OpType::matrix},
+  // Gates
+  {"id", "x", "y", "z", "s", "sdg", "h", "t", "tdg", "u1", "u2", "u3",
+    "U", "CX", "cx", "cz", "cu1", "swap", "ccx"},
+  // Snapshots
+  {"statevector", "memory", "register", "probabilities",
+    "expectation_value_pauli", "expectation_value_pauli_with_variance",
+    "expectation_value_pauli_single_shot", "expectation_value_matrix",
+    "expectation_value_matrix_with_variance",
+    "expectation_value_matrix_single_shot"}
+);
+
 // Allowed snapshots enum class
 enum class Snapshots {
   statevector, cmemory, cregister,
@@ -61,11 +79,8 @@ class State : public Base::State<matrixproductstate_t> {
 public:
   using BaseState = Base::State<matrixproductstate_t>;
 
-  State() = default;
-
-  State(uint_t num_qubits) {
-    qreg_.initialize((uint_t)num_qubits);
-  }
+  State() : BaseState(StateOpSet) {}
+  State(uint_t num_qubits) : State() {qreg_.initialize((uint_t)num_qubits);}
   virtual ~State() = default;
 
 
@@ -80,42 +95,6 @@ public:
 
   bool empty() const {
     return qreg_.empty();
-  }
-
-  // Return the set of qobj instruction types supported by the State
-  virtual Operations::OpSet::optypeset_t allowed_ops() const override {
-  	return Operations::OpSet::optypeset_t({
-
-	  //TODO: Review these operations
-      Operations::OpType::gate,
-      Operations::OpType::measure,
-      Operations::OpType::reset,
-      Operations::OpType::initialize,
-      Operations::OpType::snapshot,
-      Operations::OpType::barrier,
-      Operations::OpType::bfunc,
-      Operations::OpType::roerror,
-      Operations::OpType::matrix
-      //Operations::OpType::kraus  // TODO
-    });
-  }
-
-  // Return the set of qobj gate instruction names supported by the State
-  virtual stringset_t allowed_gates() const override {
-	stringset_t allowed_gates;
-    for(auto& gate: gateset_){
-      allowed_gates.insert(gate.first);
-    }
-    return allowed_gates;
-  }
-
-  // Return the set of qobj snapshot types supported by the State
-  virtual stringset_t allowed_snapshots() const override {
-    //TODO: Review this
-    return {"statevector", "memory", "register", "probabilities",
-	"expectation_value_pauli", "expectation_value_pauli_with_variance", "expectation_value_pauli_single_shot",
-	"expectation_value_matrix", "expectation_value_matrix_with_variance", "expectation_value_matrix_single_shot"
-	};
   }
 
   // Apply a sequence of operations by looping over list
@@ -379,21 +358,21 @@ void State::set_config(const json_t &config) {
   if (JSON::get_value(json_chop_threshold, "chop_threshold", config))
     MPS::set_json_chop_threshold(json_chop_threshold);
 
-  // Set OMP threshold for state update functions
+  // Set OMP num threshold
   uint_t omp_qubit_threshold;
   if (JSON::get_value(omp_qubit_threshold, "mps_parallel_threshold", config))
     MPS::set_omp_threshold(omp_qubit_threshold);
+
+  // Set OMP threads
+  uint_t omp_threads;
+  if (JSON::get_value(omp_threads, "mps_omp_threads", config))
+    MPS::set_omp_threads(omp_threads);
 
   // Set the sample measure indexing size
   int index_size;
   if (JSON::get_value(index_size, "mps_sample_measure_opt", config)) {
     MPS::set_sample_measure_index_size(index_size);
-  };
-
-  // Enable sorted gate optimzations
-  bool gate_opt = false;
-  //  if (JSON::get_value(gate_opt, "mps_gate_opt", config))
-  //    MPS::set_enable_gate_opt(gate_opt);
+  }
 }
 
 //=========================================================================
@@ -502,7 +481,6 @@ void State::snapshot_matrix_expval(const Operations::Op &op,
       expval += coeff * one_expval;
     }
   }
-
   // add to snapshot
   Utils::chop_inplace(expval, MPS::get_json_chop_threshold());
   switch (type) {
@@ -597,7 +575,7 @@ void State::apply_gate(const Operations::Op &op) {
       qreg_.apply_tdg(op.qubits[0]);
       break;
     case Gates::swap:
-      qreg_.apply_swap(op.qubits[0], op.qubits[1]);
+      qreg_.apply_swap(op.qubits[0], op.qubits[1], true);
       break;
     case Gates::cz:
       qreg_.apply_cz(op.qubits[0], op.qubits[1]);
@@ -611,7 +589,6 @@ void State::apply_gate(const Operations::Op &op) {
       throw std::invalid_argument(
         "MatrixProductState::State::invalid gate instruction \'" + op.name + "\'.");
   }
-
 }
 
   void State::apply_matrix(const reg_t &qubits, const cmatrix_t &mat) {
@@ -659,7 +636,7 @@ void State::apply_measure(const reg_t &qubits,
   creg_.store_measure(outcome, cmemory, cregister);
 }
 
-rvector_t State::measure_probs(const reg_t &qubits) const {
+rvector_t State::measure_probs(const reg_t &qubits) const{
   rvector_t probvector;
   qreg_.get_probabilities_vector(probvector, qubits);
   return probvector;

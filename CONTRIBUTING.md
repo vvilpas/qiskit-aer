@@ -253,6 +253,15 @@ Most of the required dependencies can be installed via *pip*, using the
     $ cd qiskit-aer
     $ pip install -r requirements-dev.txt
 
+This will also install [**Conan**](https://conan.io/), a C/C++ package manager written in Python. This tool will handle 
+most of the dependencies needed by the C++ source code. Internet connection may be needed for the first build or 
+when dependencies are added/updated, in order to download the required packages if they are not in your **Conan** local 
+repository.
+
+If we are only building the standalone version and do not want to install all Python requirements you can just install
+**Conan**:
+
+    $ pip install conan
 
 ### Linux
 
@@ -271,23 +280,6 @@ Fedora
 Ubuntu
 
     $ sudo apt install build-essential
-
-Although the *BLAS* and *LAPACK* library implementations included in the
-*build-essential* package are sufficient to build all of the `Aer` simulators, we
-recommend using *OpenBLAS*, which you can install by running
-
-CentOS/Red Hat
-
-    $ yum install openblas-devel
-
-Fedora
-
-    $ dnf install openblas-devel
-
-Ubuntu
-
-    $ sudo apt install libopenblas-dev
-
 
 And of course, `git` is required in order to build from repositories
 
@@ -318,9 +310,7 @@ As any other python package, we can install from source code by just running:
 This will build and install `Aer` with the default options which is probably suitable for most of the users.
 There's another pythonic approach to build and install software: build the wheels distributable file.
 
-
-   qiskit-aer$ python ./setup.py bdist_wheel
-
+    qiskit-aer$ python ./setup.py bdist_wheel
 
 This is also the way we will choose to change default `Aer` behavior by passing parameters to the build system.
 
@@ -370,7 +360,7 @@ option):
 
     qiskit-aer/out$ cd Release
     qiskit-aer/out/Release/$ ls
-    aer_simulator_cpp
+    qasm_simulator
 
 
 **Advanced options**
@@ -390,13 +380,6 @@ supporting *OpenMP*: *libomp*. The *CMake* build system will warn you
 otherwise. To install it manually, in a terminal window, run:
 
     $ brew install libomp
-
-We recommend installing *OpenBLAS*, which is our default choice:
-
-    $ brew install openblas
-
-The *CMake* build system will search for other *BLAS* implementation
-alternatives if *OpenBLAS* is not installed in the system.
 
 You further need to have *Xcode Command Line Tools* installed on macOS:
 
@@ -466,7 +449,7 @@ option):
 
     qiskit-aer/out$ cd Release
     qiskit-aer/out/Release/$ ls
-    aer_simulator_cpp
+    qasm_simulator
 
 ***Advanced options***
 
@@ -561,7 +544,7 @@ option):
 
     (QiskitDevEnv) qiskit-aer\out> cd Release
     (QiskitDevEnv) qiskit-aer\out\Release> dir
-    aer_simulator_cpp
+    qasm_simulator
 
 ***Advanced options***
 
@@ -570,6 +553,31 @@ based on CMake, just like most of other C++ projects. So in order to pass all th
 options we have on `Aer` to CMake we use it's native mechanism:
 
     (QiskitDevEnv) qiskit-aer\out> cmake -G "Visual Studio 15 2017" -DBLAS_LIB_PATH=c:\path\to\my\blas ..
+
+
+### Building with GPU support
+
+Qiskit Aer can exploit GPU's horsepower to accelerate some simulations, specially the larger ones.
+GPU access is supported via CUDA® (NVIDIA® chipset), so in order to build with GPU support we need
+to have CUDA® >= 10.1 preinstalled. See install instructions [here](https://developer.nvidia.com/cuda-toolkit-archive)
+Please note that we only support GPU acceleration on Linux platforms at the moment.
+
+Once CUDA® is properly installed, we only need to set a flag so the build system knows what to do:
+
+```
+AER_THRUST_BACKEND=CUDA
+```
+
+For example,
+
+    qiskit-aer$ python ./setup.py bdist_wheel -- -DAER_THRUST_BACKEND=CUDA
+
+
+Few notes on GPU builds:
+1. Building takes considerable more time than non-GPU build, so be patient :)
+2. CUDA® >= 10.1 imposes the restriction of building with g++ version not newer than 8
+3. We don't need NVIDIA® drivers for building, but we need them for running simulations
+4. Only Linux platforms are supported
 
 
 

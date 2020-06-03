@@ -31,6 +31,29 @@
 namespace AER {
 namespace Statevector {
 
+// OpSet of supported instructions
+const Operations::OpSet StateOpSet(
+  // Op types
+  {Operations::OpType::gate, Operations::OpType::measure,
+    Operations::OpType::reset, Operations::OpType::initialize,
+    Operations::OpType::snapshot, Operations::OpType::barrier,
+    Operations::OpType::bfunc, Operations::OpType::roerror,
+    Operations::OpType::matrix, Operations::OpType::diagonal_matrix,
+    Operations::OpType::multiplexer, Operations::OpType::kraus},
+  // Gates
+  {"u1",  "u2",  "u3",   "cx",   "cz",   "cy",   "cu1",
+    "cu2", "cu3", "swap", "id",   "x",    "y",    "z",
+    "h",   "s",   "sdg",  "t",    "tdg",  "ccx",  "cswap",
+    "mcx", "mcy", "mcz",  "mcu1", "mcu2", "mcu3", "mcswap"},
+  // Snapshots
+  {"statevector", "memory", "register", "probabilities",
+    "probabilities_with_variance", "expectation_value_pauli",
+    "expectation_value_pauli_with_variance",
+    "expectation_value_matrix_single_shot", "expectation_value_matrix",
+    "expectation_value_matrix_with_variance",
+    "expectation_value_pauli_single_shot"}
+);
+
 // Allowed gates enum class
 enum class Gates {
   id, h, s, sdg, t, tdg, // single qubit
@@ -58,7 +81,7 @@ class State : public Base::State<statevec_t> {
 public:
   using BaseState = Base::State<statevec_t>;
 
-  State() = default;
+  State() : BaseState(StateOpSet) {}
   virtual ~State() = default;
 
   //-----------------------------------------------------------------------
@@ -67,43 +90,6 @@ public:
 
   // Return the string name of the State class
   virtual std::string name() const override {return statevec_t::name();}
-
-  // Return the set of qobj instruction types supported by the State
-  virtual Operations::OpSet::optypeset_t allowed_ops() const override {
-    return Operations::OpSet::optypeset_t({
-      Operations::OpType::gate,
-      Operations::OpType::measure,
-      Operations::OpType::reset,
-      Operations::OpType::initialize,
-      Operations::OpType::snapshot,
-      Operations::OpType::barrier,
-      Operations::OpType::bfunc,
-      Operations::OpType::roerror,
-      Operations::OpType::matrix,
-      Operations::OpType::multiplexer,
-      Operations::OpType::kraus
-    });
-  }
-
-  // Return the set of qobj gate instruction names supported by the State
-  virtual stringset_t allowed_gates() const override {
-    return {"u1", "u2", "u3", "cx", "cz", "cy", "cu1", "cu2", "cu3", "swap", 
-            "id", "x", "y", "z", "h", "s", "sdg", "t", "tdg", "ccx", "cswap",
-            "mcx", "mcy", "mcz", "mcu1", "mcu2", "mcu3", "mcswap"};
-  }
-
-  // Return the set of qobj snapshot types supported by the State
-  virtual stringset_t allowed_snapshots() const override {
-    return {"statevector", "memory", "register",
-            "probabilities", "probabilities_with_variance",
-            "expectation_value_pauli",
-            "expectation_value_pauli_with_variance",
-            "expectation_value_matrix_single_shot",
-            "expectation_value_matrix",
-            "expectation_value_matrix_with_variance",
-            "expectation_value_pauli_single_shot"
-            };
-  }
 
   // Apply a sequence of operations by looping over list
   // If the input is not in allowed_ops an exception will be raised.
@@ -406,8 +392,6 @@ template <class statevec_t>
 size_t State<statevec_t>::required_memory_mb(uint_t num_qubits,
                                              const std::vector<Operations::Op> &ops)
                                              const {
-  // An n-qubit state vector as 2^n complex doubles
-  // where each complex double is 16 bytes
   (void)ops; // avoid unused variable compiler warning
   return BaseState::qreg_.required_memory_mb(num_qubits);
 }
@@ -468,6 +452,9 @@ void State<statevec_t>::apply_ops(const std::vector<Operations::Op> &ops,
           break;
         case Operations::OpType::matrix:
           apply_matrix(op);
+          break;
+        case Operations::OpType::diagonal_matrix:
+          BaseState::qreg_.apply_diagonal_matrix(op.qubits, op.params);
           break;
         case Operations::OpType::multiplexer:
           apply_multiplexer(op.regs[0], op.regs[1], op.mats); // control qubits ([0]) & target qubits([1])
@@ -562,50 +549,15 @@ void State<statevec_t>::snapshot_pauli_expval(const Operations::Op &op,
     throw std::invalid_argument("Invalid expval snapshot (Pauli components are empty).");
   }
 
-  // Cache the current quantum state
-  BaseState::qreg_.checkpoint();
-  bool first = true; // flag for first pass so we don't unnecessarily revert from checkpoint
-
-  // Compute expval components
+  // Accumulate expval components
   complex_t expval(0., 0.);
   for (const auto &param : op.params_expval_pauli) {
-    // Revert the quantum state to cached checkpoint
-    if (first)
-      first = false;
-    else
-      BaseState::qreg_.revert(true);
-    // Apply each pauli operator as a gate to the corresponding qubit
-    // qubits are stored as a list where position is qubit number:
-    // eq op.qubits = [a, b, c], a is qubit-0, b is qubit-1, c is qubit-2
-    // Pauli string labels are stored in little-endian ordering:
-    // eg label = "CBA", A is the Pauli for qubit-0, B for qubit-1, C for qubit-2
     const auto& coeff = param.first;
     const auto& pauli = param.second;
-    for (uint_t pos=0; pos < op.qubits.size(); ++pos) {
-      switch (pauli[pauli.size() - 1 - pos]) {
-        case 'I':
-          break;
-        case 'X':
-          BaseState::qreg_.apply_mcx({op.qubits[pos]});
-          break;
-        case 'Y':
-          BaseState::qreg_.apply_mcy({op.qubits[pos]});
-          break;
-        case 'Z':
-          BaseState::qreg_.apply_mcphase({op.qubits[pos]}, -1);
-          break;
-        default: {
-          std::stringstream msg;
-          msg << "QubitVectorState::invalid Pauli string \'" << pauli[pos] << "\'.";
-          throw std::invalid_argument(msg.str());
-        }
-      }
-    }
-    // Pauli expecation values should always be real for a valid state
-    // so we truncate the imaginary part
-    expval += coeff * std::real(BaseState::qreg_.inner_product());
+    expval += coeff * BaseState::qreg_.expval_pauli(op.qubits, pauli);
   }
-  // add to snapshot
+
+  // Add to snapshot
   Utils::chop_inplace(expval, json_chop_threshold_);
   switch (type) {
     case SnapshotDataType::average:
@@ -620,8 +572,6 @@ void State<statevec_t>::snapshot_pauli_expval(const Operations::Op &op,
       data.add_pershot_snapshot("expectation_values", op.string_params[0], expval);
       break;
   }
-  // Revert to original state
-  BaseState::qreg_.revert(false);
 }
 
 template <class statevec_t>

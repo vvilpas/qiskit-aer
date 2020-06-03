@@ -24,10 +24,12 @@ from test.terra.backends.qasm_simulator.qasm_measure import QasmMultiQubitMeasur
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTests
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTestsMinimalBasis
-from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTests
+from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsTGate
+from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsCCXGate
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsMinimalBasis
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
+from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalUnitaryTests
@@ -50,6 +52,7 @@ from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotDensity
 from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStabilizerTests
 from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotProbabilitiesTests
 from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValPauliTests
+from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpvalPauliNCTests
 from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValMatrixTests
 
 
@@ -58,15 +61,16 @@ class DensityMatrixTests(
         QasmResetTests, QasmConditionalGateTests, QasmConditionalUnitaryTests,
         QasmConditionalKrausTests, QasmConditionalSuperOpTests,
         QasmCliffordTests, QasmCliffordTestsWaltzBasis,
-        QasmCliffordTestsMinimalBasis, QasmNonCliffordTests,
+        QasmCliffordTestsMinimalBasis, QasmNonCliffordTestsTGate,
+        QasmNonCliffordTestsCCXGate,
         QasmNonCliffordTestsWaltzBasis, QasmNonCliffordTestsMinimalBasis,
         QasmAlgorithmTests, QasmAlgorithmTestsWaltzBasis,
-        QasmAlgorithmTestsMinimalBasis, QasmUnitaryGateTests,
+        QasmAlgorithmTestsMinimalBasis, QasmUnitaryGateTests, QasmDiagonalGateTests,
         QasmReadoutNoiseTests, QasmPauliNoiseTests, QasmResetNoiseTests,
         QasmKrausNoiseTests, QasmSnapshotStatevectorTests,
         QasmSnapshotDensityMatrixTests, QasmSnapshotProbabilitiesTests,
-        QasmSnapshotExpValPauliTests, QasmSnapshotExpValMatrixTests,
-        QasmSnapshotStabilizerTests):
+        QasmSnapshotExpValPauliTests, QasmSnapshotExpvalPauliNCTests,
+        QasmSnapshotExpValMatrixTests, QasmSnapshotStabilizerTests):
     """Container class of density_matrix method tests."""
     pass
 

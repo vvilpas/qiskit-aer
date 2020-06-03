@@ -19,6 +19,7 @@ from test.terra.reference import ref_1q_clifford
 from test.terra.reference import ref_2q_clifford
 from test.terra.reference import ref_non_clifford
 from test.terra.reference import ref_unitary_gate
+from test.terra.reference import ref_diagonal_gate
 
 from qiskit import execute
 from qiskit.providers.aer import UnitarySimulator
@@ -43,7 +44,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_h_gate_deterministic_waltz_basis_gates(self):
@@ -57,7 +58,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_h_gate_deterministic_minimal_basis_gates(self):
@@ -71,7 +72,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_h_gate_nondeterministic_default_basis_gates(self):
@@ -84,7 +85,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_h_gate_nondeterministic_waltz_basis_gates(self):
@@ -98,7 +99,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_h_gate_nondeterministic_minimal_basis_gates(self):
@@ -112,7 +113,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -128,7 +129,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_x_gate_deterministic_waltz_basis_gates(self):
@@ -142,7 +143,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_x_gate_deterministic_minimal_basis_gates(self):
@@ -156,7 +157,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -172,7 +173,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_z_gate_deterministic_waltz_basis_gates(self):
@@ -186,7 +187,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_z_gate_deterministic_minimal_basis_gates(self):
@@ -200,7 +201,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -216,7 +217,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_y_gate_deterministic_waltz_basis_gates(self):
@@ -230,7 +231,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_y_gate_deterministic_minimal_basis_gates(self):
@@ -244,7 +245,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -260,7 +261,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_s_gate_deterministic_waltz_basis_gates(self):
@@ -274,7 +275,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_s_gate_deterministic_minimal_basis_gates(self):
@@ -288,7 +289,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_s_gate_nondeterministic_default_basis_gates(self):
@@ -301,7 +302,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_s_gate_nondeterministic_waltz_basis_gates(self):
@@ -315,7 +316,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_s_gate_nondeterministic_minimal_basis_gates(self):
@@ -329,7 +330,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -345,7 +346,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_sdg_gate_deterministic_waltz_basis_gates(self):
@@ -359,7 +360,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_sdg_gate_deterministic_minimal_basis_gates(self):
@@ -373,7 +374,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_sdg_gate_nondeterministic_default_basis_gates(self):
@@ -386,7 +387,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_sdg_gate_nondeterministic_waltz_basis_gates(self):
@@ -400,7 +401,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_sdg_gate_nondeterministic_minimal_basis_gates(self):
@@ -414,7 +415,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -430,7 +431,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cx_gate_deterministic_waltz_basis_gates(self):
@@ -444,7 +445,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cx_gate_deterministic_minimal_basis_gates(self):
@@ -458,7 +459,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cx_gate_nondeterministic_default_basis_gates(self):
@@ -471,7 +472,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cx_gate_nondeterministic_waltz_basis_gates(self):
@@ -485,7 +486,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cx_gate_nondeterministic_minimal_basis_gates(self):
@@ -499,7 +500,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -515,7 +516,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cz_gate_deterministic_waltz_basis_gates(self):
@@ -529,7 +530,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cz_gate_deterministic_minimal_basis_gates(self):
@@ -543,7 +544,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cz_gate_nondeterministic_default_basis_gates(self):
@@ -556,7 +557,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cz_gate_nondeterministic_waltz_basis_gates(self):
@@ -570,7 +571,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cz_gate_nondeterministic_minimal_basis_gates(self):
@@ -584,7 +585,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
 
@@ -602,7 +603,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu1_gate_nondeterministic_waltz_basis_gates(self):
@@ -616,7 +617,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu1_gate_nondeterministic_minimal_basis_gates(self):
@@ -630,7 +631,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -646,7 +647,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu3_gate_deterministic_waltz_basis_gates(self):
@@ -660,7 +661,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu3_gate_deterministic_minimal_basis_gates(self):
@@ -674,7 +675,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -690,7 +691,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(
             result, circuits, targets
         )  # ---------------------------------------------------------------------
@@ -707,7 +708,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_swap_gate_deterministic_waltz_basis_gates(self):
@@ -721,7 +722,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_swap_gate_deterministic_minimal_basis_gates(self):
@@ -735,7 +736,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_swap_gate_nondeterministic_default_basis_gates(self):
@@ -748,7 +749,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_swap_gate_nondeterministic_waltz_basis_gates(self):
@@ -762,7 +763,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_swap_gate_nondeterministic_minimal_basis_gates(self):
@@ -776,7 +777,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -792,7 +793,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_t_gate_deterministic_waltz_basis_gates(self):
@@ -806,7 +807,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_t_gate_deterministic_minimal_basis_gates(self):
@@ -820,7 +821,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_t_gate_nondeterministic_default_basis_gates(self):
@@ -833,7 +834,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_t_gate_nondeterministic_waltz_basis_gates(self):
@@ -847,7 +848,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_t_gate_nondeterministic_minimal_basis_gates(self):
@@ -861,7 +862,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -877,7 +878,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_tdg_gate_deterministic_waltz_basis_gates(self):
@@ -891,7 +892,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_tdg_gate_deterministic_minimal_basis_gates(self):
@@ -905,7 +906,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_tdg_gate_nondeterministic_default_basis_gates(self):
@@ -918,7 +919,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_tdg_gate_nondeterministic_waltz_basis_gates(self):
@@ -932,7 +933,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_tdg_gate_nondeterministic_minimal_basis_gates(self):
@@ -946,7 +947,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -962,7 +963,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_ccx_gate_deterministic_waltz_basis_gates(self):
@@ -976,7 +977,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_ccx_gate_deterministic_minimal_basis_gates(self):
@@ -990,7 +991,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_ccx_gate_nondeterministic_default_basis_gates(self):
@@ -1003,7 +1004,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_ccx_gate_nondeterministic_waltz_basis_gates(self):
@@ -1017,7 +1018,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_ccx_gate_nondeterministic_minimal_basis_gates(self):
@@ -1031,7 +1032,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -1047,7 +1048,20 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
+        self.compare_unitary(result, circuits, targets)
+
+    def test_diagonal_gate(self):
+        """Test simulation with diagonal gate circuit instructions."""
+        circuits = ref_diagonal_gate.diagonal_gate_circuits_deterministic(
+            final_measure=False)
+        targets = ref_diagonal_gate.diagonal_gate_unitary_deterministic()
+        job = execute(circuits,
+                      self.SIMULATOR,
+                      shots=1,
+                      backend_options=self.BACKEND_OPTS)
+        result = job.result()
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -1063,7 +1077,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     # ---------------------------------------------------------------------
@@ -1080,7 +1094,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cswap_gate_deterministic_minimal_basis_gates(self):
@@ -1094,7 +1108,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu1_gate_nondeterministic_minimal_basis_gates(self):
@@ -1108,7 +1122,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cswap_gate_deterministic_waltz_basis_gates(self):
@@ -1122,7 +1136,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cswap_gate_nondeterministic_default_basis_gates(self):
@@ -1135,7 +1149,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cu1_gate_nondeterministic_default_basis_gates(self):
@@ -1148,7 +1162,7 @@ class UnitarySimulatorTests:
                       shots=1,
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cswap_gate_nondeterministic_minimal_basis_gates(self):
@@ -1162,7 +1176,7 @@ class UnitarySimulatorTests:
                       basis_gates=['u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)
 
     def test_cswap_gate_nondeterministic_waltz_basis_gates(self):
@@ -1176,5 +1190,5 @@ class UnitarySimulatorTests:
                       basis_gates=['u1', 'u2', 'u3', 'cx'],
                       backend_options=self.BACKEND_OPTS)
         result = job.result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_unitary(result, circuits, targets)

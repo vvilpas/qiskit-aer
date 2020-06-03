@@ -13,14 +13,17 @@
 QasmSimulator Integration Tests
 """
 
+
+from test.terra.reference import ref_unitary_gate, ref_diagonal_gate
+
 from qiskit import execute
 from qiskit.providers.aer import QasmSimulator
 
-from test.terra.reference import ref_unitary_gate
+import numpy as np
 
 
 class QasmUnitaryGateTests:
-    """QasmSimulator additional tests."""
+    """QasmSimulator unitary gate tests."""
 
     SIMULATOR = QasmSimulator()
     BACKEND_OPTS = {}
@@ -36,15 +39,40 @@ class QasmUnitaryGateTests:
             final_measure=True)
         targets = ref_unitary_gate.unitary_gate_counts_deterministic(
             shots)
-        result = execute(circuits, self.SIMULATOR, shots=shots).result()
-        self.assertTrue(getattr(result, 'success', False))
+        result = execute(circuits, self.SIMULATOR, shots=shots,
+                         backend_options=self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
     def test_random_unitary_gate(self):
         """Test simulation with random unitary gate circuit instructions."""
-        shots = 2000
+        shots = 4000
         circuits = ref_unitary_gate.unitary_random_gate_circuits_nondeterministic(final_measure=True)
-        targets = ref_unitary_gate.unitary_random_gate_counts_nondeterministic()
-        result = execute(circuits, self.SIMULATOR, shots=shots).result()
-        self.assertTrue(getattr(result, 'success', False))
+        targets = ref_unitary_gate.unitary_random_gate_counts_nondeterministic(shots)
+        result = execute(circuits, self.SIMULATOR, shots=shots,
+                         backend_options=self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+
+
+class QasmDiagonalGateTests:
+    """QasmSimulator diagonal gate tests."""
+
+    SIMULATOR = QasmSimulator()
+    BACKEND_OPTS = {}
+
+    # ---------------------------------------------------------------------
+    # Test unitary gate qobj instruction
+    # ---------------------------------------------------------------------
+
+    def test_diagonal_gate(self):
+        """Test simulation with unitary gate circuit instructions."""
+        shots = 100
+        circuits = ref_diagonal_gate.diagonal_gate_circuits_deterministic(
+            final_measure=True)
+        targets = ref_diagonal_gate.diagonal_gate_counts_deterministic(
+            shots)
+        result = execute(circuits, self.SIMULATOR, shots=shots,
+                         backend_options=self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)
