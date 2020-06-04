@@ -34,21 +34,12 @@ namespace AER {
       content->data.resize(length);
     }
 
-//    static container_t &get_array(N_Vector &vec) {
-//      return static_cast<SundialsComplexContent *>(vec->content)->data;
-//    }
-//
-//    template<typename T>
-//    static T &get_raw(N_Vector y) {
-//      return SundialsComplexContent::get_array(y);
-//    }
-
     static SundialsComplexContent* get_content(N_Vector v) {
       return static_cast<SundialsComplexContent *>(v->content);
     }
 
-    static container_t& get_raw_data(N_Vector v) {
-      return get_content(v)->data;
+    static typename container_t::value_type* get_raw_data(N_Vector v) {
+      return get_content(v)->data.data();
     }
 
     static container_t& get_data(N_Vector v) {
@@ -60,7 +51,7 @@ namespace AER {
     }
 
     static void set_data(N_Vector v, const container_t& y0) {
-      auto &raw_y = SundialsComplexContent::get_raw_data(v);
+      auto raw_y = SundialsComplexContent::get_raw_data(v);
       for (size_t i = 0; i < y0.size(); ++i) {
         raw_y[i] = y0[i];
       }
@@ -70,14 +61,10 @@ namespace AER {
   template<typename content_t>
   struct SundialsOps{
     static N_Vector SundialsComplexContent_CloneEmpty(N_Vector w) {
-      N_Vector v;
-      content_t *content;
-
       if (w == nullptr) return nullptr;
 
       /* Create vector */
-      v = nullptr;
-      v = N_VNewEmpty();
+      N_Vector v = N_VNewEmpty();
       if (v == nullptr) return nullptr;
 
       /* Attach operations */
@@ -87,29 +74,17 @@ namespace AER {
       }
 
       /* Create content */
-      content = nullptr;
-      content = new content_t;
-      if (content == nullptr) {
-        N_VDestroy(v);
-        return nullptr;
-      }
-
-      /* Attach content */
-      v->content = content;
+      v->content = new content_t;
       return v;
     }
 
     static N_Vector SundialsComplexContent_Clone(N_Vector w) {
-      N_Vector v;
-      sunindextype length;
-
-      v = nullptr;
-      v = SundialsComplexContent_CloneEmpty(w);
+      if (w == nullptr) return nullptr;
+      N_Vector v = SundialsComplexContent_CloneEmpty(w);
       if (v == nullptr) return nullptr;
 
-      length = content_t::get_size(w);
-
-      /* Create data */
+      sunindextype length = content_t::get_size(w);
+      /* Prepare data */
       if (length > 0) {
         content_t::prepare_data(v, length);
       }
@@ -121,15 +96,9 @@ namespace AER {
       if (v == nullptr) return;
       /* free content */
       if (v->content != nullptr) {
-        /* free data array if it's owned by the vector */
-  //        if (content_t::get_content(v)->own_data && content_t::get_content(v)->data != NULL) {
-  //            free(content_t::get_content(v)->data);
-  //            content_t::get_content(v)->data = NULL;
-  //        }
         delete content_t::get_content(v);
         v->content = nullptr;
       }
-
       /* free ops and vector */
       if (v->ops != nullptr) {
         free(v->ops);
@@ -139,7 +108,7 @@ namespace AER {
       return;
     }
 
-  static void SundialsComplexContent_Space(N_Vector v, sunindextype *lrw, sunindextype *liw) {
+    static void SundialsComplexContent_Space(N_Vector v, sunindextype *lrw, sunindextype *liw) {
       *lrw = content_t::get_size(v);
       *liw = 1;
 
@@ -156,9 +125,9 @@ namespace AER {
 
     static void SundialsComplexContent_LinearSum(realtype a, N_Vector x, realtype b, N_Vector y, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &y_raw = content_t::get_raw_data(y);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto y_raw = content_t::get_raw_data(y);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = (a * x_raw[i]) + (b * y_raw[i]);
       }
@@ -166,7 +135,7 @@ namespace AER {
 
     static void SundialsComplexContent_Const(realtype c, N_Vector z) {
       auto len = content_t::get_size(z);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = c;
       }
@@ -174,9 +143,9 @@ namespace AER {
 
   static void SundialsComplexContent_Prod(N_Vector x, N_Vector y, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &y_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto y_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = x_raw[i] * y_raw[i];
       }
@@ -184,9 +153,9 @@ namespace AER {
 
   static void SundialsComplexContent_Div(N_Vector x, N_Vector y, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &y_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto y_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = x_raw[i] / y_raw[i];
       }
@@ -194,8 +163,8 @@ namespace AER {
 
   static void SundialsComplexContent_Scale(realtype c, N_Vector x, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = c * x_raw[i];
       }
@@ -203,8 +172,8 @@ namespace AER {
 
   static void SundialsComplexContent_Abs(N_Vector x, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = std::abs(x_raw[i]);
       }
@@ -212,8 +181,8 @@ namespace AER {
 
   static void SundialsComplexContent_Inv(N_Vector x, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = 1. / x_raw[i];
       }
@@ -221,8 +190,8 @@ namespace AER {
 
   static void SundialsComplexContent_AddConst(N_Vector x, realtype b, N_Vector z) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &z_raw = content_t::get_raw_data(z);
+      auto x_raw = content_t::get_raw_data(x);
+      auto z_raw = content_t::get_raw_data(z);
       for (int i = 0; i < len; i++) {
         z_raw[i] = x_raw[i] + b;
       }
@@ -230,7 +199,7 @@ namespace AER {
 
   static realtype SundialsComplexContent_MaxNorm(N_Vector x) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
+      auto x_raw = content_t::get_raw_data(x);
       double max = 0.0;
       double temp;
       for (int i = 0; i < len; i++) {
@@ -242,8 +211,8 @@ namespace AER {
 
   static realtype SundialsComplexContent_WrmsNorm(N_Vector x, N_Vector w) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
-      auto &w_raw = content_t::get_raw_data(w);
+      auto x_raw = content_t::get_raw_data(x);
+      auto w_raw = content_t::get_raw_data(w);
       double ret{0.0};
       for (int i = 0; i < len; i++) {
         //ret += std::norm(w_raw[i]) * std::norm(x_raw[i]);
@@ -254,7 +223,7 @@ namespace AER {
 
   static realtype SundialsComplexContent_Min(N_Vector x) {
       auto len = content_t::get_size(x);
-      auto &x_raw = content_t::get_raw_data(x);
+      auto x_raw = content_t::get_raw_data(x);
       double min = std::numeric_limits<double>::max();
       double temp;
       for (int i = 0; i < len; i++) {
@@ -270,16 +239,11 @@ namespace AER {
     }
 
   static N_Vector SundialsComplexContent_NewEmpty(sunindextype vec_length) {
-      N_Vector v;
-      content_t *content;
-
-      /* Create an empty vector object */
-      v = nullptr;
-      v = N_VNewEmpty();
+      N_Vector v = N_VNewEmpty();
       if (v == nullptr) return nullptr;
 
-      /* Attach operations */
-      /* constructors, destructors, and utility operations */
+      // Attach operations
+      // constructors, destructors, and utility operations
       v->ops->nvgetvectorid = SundialsOps::SundialsComplexContent_GetVectorID;
       v->ops->nvclone = SundialsOps::SundialsComplexContent_Clone;
       v->ops->nvdestroy = SundialsOps::SundialsComplexContent_Destroy;
@@ -287,7 +251,7 @@ namespace AER {
       v->ops->nvcloneempty = SundialsOps::SundialsComplexContent_CloneEmpty;
       v->ops->nvgetlength = SundialsOps::SundialsComplexContent_GetLength;
 
-      /* standard vector operations */
+      // standard vector operations
       v->ops->nvlinearsum = SundialsOps::SundialsComplexContent_LinearSum;
       v->ops->nvconst = SundialsOps::SundialsComplexContent_Const;
       v->ops->nvprod = SundialsOps::SundialsComplexContent_Prod;
@@ -303,24 +267,13 @@ namespace AER {
       // Operations required but not needed
       v->ops->nvdotprod = SundialsOps::SundialsComplex_DotProd;
 
-      /* Create content */
-      content = nullptr;
-      content = new content_t;
-      if (content == nullptr) {
-        N_VDestroy(v);
-        return nullptr;
-      }
-
-      /* Attach content */
-      v->content = content;
+      // Create content
+      v->content = new content_t;
       return v;
     }
 
   static N_Vector SundialsComplexContent_New(sunindextype vec_length) {
-      N_Vector v;
-
-      v = nullptr;
-      v = SundialsComplexContent_NewEmpty(vec_length);
+      N_Vector v = SundialsComplexContent_NewEmpty(vec_length);
       if (v == nullptr) return nullptr;
 
       /* Create data */

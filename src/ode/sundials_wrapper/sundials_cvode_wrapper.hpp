@@ -30,6 +30,7 @@ namespace AER{
   class CvodeWrapper : Ode<T> {
   public:
     using rhsFuncType = std::function<void(double, const T&, T&)>;
+
     CvodeWrapper(OdeMethod method, rhsFuncType f, const T& y0, double t0, double reltol, double abstol);
     CvodeWrapper(OdeMethod method, rhsFuncType f, unsigned int n, double t0, double reltol, double abstol);
 

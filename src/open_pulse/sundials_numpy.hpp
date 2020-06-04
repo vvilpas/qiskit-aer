@@ -6,26 +6,26 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/complex.h>
-
+#include <numpy/arrayobject.h>
 namespace AER {
   using n_array = py::array_t<complex_t>;
-  using numpy_wrapper = pybind11::detail::unchecked_mutable_reference<complex_t, 1>;
 
   template<>
   struct SundialsComplexContent<n_array> {
     n_array data;
-    complex_t *data_raw;
 
     static N_Vector new_vector(int vec_length) {
       return SundialsOps<SundialsComplexContent>::SundialsComplexContent_New(vec_length);
     };
 
     static SundialsComplexContent *get_content(N_Vector v) {
-      return static_cast<SundialsComplexContent *>(v->content);
+      auto ret = static_cast<SundialsComplexContent *>(v->content);
+      return ret;
     }
 
-    static complex_t *&get_raw_data(N_Vector v) {
-      return get_content(v)->data_raw;
+    static complex_t* get_raw_data(N_Vector v) {
+      auto ret = static_cast<complex_t *>(get_content(v)->data.request().ptr);
+      return ret;
     }
 
     static n_array &get_data(N_Vector v) {
@@ -39,10 +39,11 @@ namespace AER {
     static N_Vector new_vector(const py::array_t <complex_t> &container) {
       N_Vector y = SundialsOps<SundialsComplexContent>::SundialsComplexContent_New(container.size());
       auto &data = get_data(y);
-      data = n_array({static_cast<int>(container.size()), 1});
+      auto out = static_cast<complex_t *>(PyDataMem_NEW(container.size() * sizeof(complex_t)));
+      data = n_array(static_cast<int>(container.size()), out);
 //      data = container;
-      auto data_raw = get_raw_data(y);
-  //    data_raw = static_cast<complex_t *>(data.request().ptr);
+//      auto data_raw = get_raw_data(y);
+      auto data_raw = static_cast<complex_t *>(data.request().ptr);
       auto con_raw = static_cast<complex_t *>(container.request().ptr);
       for(int i = 0; i<container.size(); i++){
         data_raw[i] = con_raw[i];
@@ -52,8 +53,13 @@ namespace AER {
 
     static void prepare_data(N_Vector v, int length) {
       auto content = static_cast<SundialsComplexContent *>(v->content);
-      content->data = n_array({length, 1});
-      content->data_raw = static_cast<complex_t *>(content->data.request().ptr);
+      auto out = static_cast<complex_t *>(PyDataMem_NEW(length * sizeof(complex_t)));
+      content->data = n_array(length, out);
+      auto data_raw = static_cast<complex_t *>(content->data.request().ptr);
+      for(int i = 0; i< length; i++){
+        data_raw[i] = 0.0;
+      }
+//      content->data_raw = static_cast<complex_t *>(content->data.request().ptr);
     }
 
     static void set_data(N_Vector v, const n_array& y0) {

@@ -123,7 +123,7 @@ class TestPulseSimulator(common.QiskitAerTestCase):
                         meas_map=[[0]],
                         qubit_lo_freq=[omega_d0/(2*np.pi)],
                         memory_slots=2,
-                        shots=1)
+                        shots=256)
 
         # set backend backend_options
         backend_options = {'seed' : 9000}
