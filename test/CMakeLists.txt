@@ -23,7 +23,7 @@ function(aer_add_test target_name)
                                          RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}
                                          RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR})
 
-   target_include_directories(${target_name}
+    target_include_directories(${target_name}
                                PRIVATE ${AER_SIMULATOR_CPP_SRC_DIR}
                                PRIVATE ${AER_SIMULATOR_CPP_EXTERNAL_LIBS})
     target_link_libraries(${target_name}

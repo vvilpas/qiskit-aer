@@ -640,7 +640,7 @@ inline matrix<double> operator*(const matrix<double> &A,
   // C-> alpha*op(A)*op(B) +beta C
   matrix<double> C(A.rows_, B.cols_);
   double alpha = 1.0, beta = 0.0;
-  dgemm_(&Trans[0], &Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::dgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, B.cols_,
   // A.cols_, 1.0, A.mat_, A.LD_, B.mat_, B.LD_, 0.0, C.mat_, C.LD_);
@@ -652,7 +652,7 @@ inline matrix<float> operator*(const matrix<float> &A, const matrix<float> &B) {
   // C-> alpha*op(A)*op(B) +beta C
   matrix<float> C(A.rows_, B.cols_);
   float alpha = 1.0, beta = 0.0;
-  sgemm_(&Trans[0], &Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::sgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, B.cols_,
   // A.cols_, 1.0, A.mat_, A.LD_, B.mat_, B.LD_, 0.0, C.mat_, C.LD_);
@@ -666,7 +666,7 @@ operator*(const matrix<std::complex<float>> &A,
   // C-> alpha*op(A)*op(B) +beta C
   matrix<std::complex<float>> C(A.rows_, B.cols_);
   std::complex<float> alpha = 1.0, beta = 0.0;
-  cgemm_(&Trans[0], &Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::cgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, B.cols_,
   // A.cols_, &alpha, A.mat_, A.LD_, B.mat_, B.LD_, &beta, C.mat_, C.LD_);
@@ -680,7 +680,7 @@ operator*(const matrix<std::complex<double>> &A,
   // C-> alpha*op(A)*op(B) +beta C
   matrix<std::complex<double>> C(A.rows_, B.cols_);
   std::complex<double> alpha = 1.0, beta = 0.0;
-  zgemm_(&Trans[0], &Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::zgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &B.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, B.cols_,
   // A.cols_, &alpha, A.mat_, A.LD_, B.mat_, B.LD_, &beta, C.mat_, C.LD_);
@@ -694,7 +694,7 @@ operator*(const matrix<float> &A, const matrix<std::complex<float>> &B) {
   matrix<std::complex<float>> C(A.rows_, B.cols_), Ac(A.rows_, A.cols_);
   Ac = A;
   std::complex<float> alpha = 1.0, beta = 0.0;
-  cgemm_(&Trans[0], &Trans[0], &Ac.rows_, &B.cols_, &Ac.cols_, &alpha, Ac.mat_,
+  AerBlas::f77::cgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &Ac.rows_, &B.cols_, &Ac.cols_, &alpha, Ac.mat_,
          &Ac.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Ac.rows_, B.cols_,
   // Ac.cols_, &alpha, Ac.mat_, Ac.LD_, B.mat_, B.LD_, &beta, C.mat_, C.LD_);
@@ -708,7 +708,7 @@ operator*(const matrix<double> &A, const matrix<std::complex<double>> &B) {
   matrix<std::complex<double>> C(A.rows_, B.cols_), Ac(A.rows_, A.cols_);
   Ac = A;
   std::complex<double> alpha = 1.0, beta = 0.0;
-  zgemm_(&Trans[0], &Trans[0], &Ac.rows_, &B.cols_, &Ac.cols_, &alpha, Ac.mat_,
+  AerBlas::f77::zgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &Ac.rows_, &B.cols_, &Ac.cols_, &alpha, Ac.mat_,
          &Ac.LD_, B.mat_, &B.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, Ac.rows_, B.cols_,
   // Ac.cols_, &alpha, Ac.mat_, Ac.LD_, B.mat_, B.LD_, &beta, C.mat_, C.LD_);
@@ -722,7 +722,7 @@ operator*(const matrix<std::complex<float>> &A, const matrix<float> &B) {
   matrix<std::complex<float>> C(A.rows_, B.cols_), Bc(B.rows_, B.cols_);
   Bc = B;
   std::complex<float> alpha = 1.0, beta = 0.0;
-  cgemm_(&Trans[0], &Trans[0], &A.rows_, &Bc.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::cgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &Bc.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, Bc.mat_, &Bc.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, Bc.cols_,
   // A.cols_, &alpha, A.mat_, A.LD_, Bc.mat_, Bc.LD_, &beta, C.mat_, C.LD_);
@@ -736,7 +736,7 @@ operator*(const matrix<std::complex<double>> &A, const matrix<double> &B) {
   matrix<std::complex<double>> C(A.rows_, B.cols_), Bc(B.rows_, B.cols_);
   Bc = B;
   std::complex<double> alpha = 1.0, beta = 0.0;
-  zgemm_(&Trans[0], &Trans[0], &A.rows_, &Bc.cols_, &A.cols_, &alpha, A.mat_,
+  AerBlas::f77::zgemm(&AerBlas::Trans[0], &AerBlas::Trans[0], &A.rows_, &Bc.cols_, &A.cols_, &alpha, A.mat_,
          &A.LD_, Bc.mat_, &Bc.LD_, &beta, C.mat_, &C.LD_);
   // cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, A.rows_, Bc.cols_,
   // A.cols_, &alpha, A.mat_, A.LD_, Bc.mat_, Bc.LD_, &beta, C.mat_, C.LD_);
@@ -750,7 +750,7 @@ inline std::vector<float> operator*(const matrix<float> &A,
   std::vector<float> y(A.rows_);
   float alpha = 1.0, beta = 0.0;
   const size_t incx = 1, incy = 1;
-  sgemv_(&Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
+  AerBlas::f77::sgemv(&AerBlas::Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
          &beta, y.data(), &incy);
   return y;
 }
@@ -761,7 +761,7 @@ inline std::vector<double> operator*(const matrix<double> &A,
   std::vector<double> y(A.rows_);
   double alpha = 1.0, beta = 0.0;
   const size_t incx = 1, incy = 1;
-  dgemv_(&Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
+  AerBlas::f77::dgemv(&AerBlas::Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
          &beta, y.data(), &incy);
   return y;
 }
@@ -773,7 +773,7 @@ operator*(const matrix<std::complex<float>> &A,
   std::vector<std::complex<float>> y(A.rows_);
   std::complex<float> alpha = 1.0, beta = 0.0;
   const size_t incx = 1, incy = 1;
-  cgemv_(&Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
+  AerBlas::f77::cgemv(&AerBlas::Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
          &beta, y.data(), &incy);
   return y;
 }
@@ -785,7 +785,7 @@ operator*(const matrix<std::complex<double>> &A,
   std::vector<std::complex<double>> y(A.rows_);
   std::complex<double> alpha = 1.0, beta = 0.0;
   const size_t incx = 1, incy = 1;
-  zgemv_(&Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
+  AerBlas::f77::zgemv(&AerBlas::Trans[0], &A.rows_, &A.cols_, &alpha, A.mat_, &A.LD_, x.data(), &incx,
          &beta, y.data(), &incy);
   return y;
 }
