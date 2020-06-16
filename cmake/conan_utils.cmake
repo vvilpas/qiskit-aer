@@ -40,7 +40,7 @@ macro(setup_conan)
     conan_cmake_run(PROFILE default
                     REQUIRES ${REQUIREMENTS}
                     OPTIONS ${CONAN_OPTIONS}
-                    ENV CONAN_CMAKE_PROGRAM=${CMAKE_COMMAND}
+                    ENV CONAN_CMAKE_PROGRAM=${CMAKE_COMMAND} OPENBLAS_USE64BITINT=1
                     BASIC_SETUP CMAKE_TARGETS KEEP_RPATHS
                     BUILD missing)
 endmacro()
