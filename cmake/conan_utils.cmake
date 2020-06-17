@@ -28,6 +28,7 @@ macro(setup_conan)
 
     if(NOT BLAS_LIB_PATH)
         set(REQUIREMENTS ${REQUIREMENTS} openblas/0.3.7)
+        set(CONAN_OPTIONS ${CONAN_OPTIONS} "openblas:build_lapack=True")
     endif()
 
     if(BUILD_TESTS)
