@@ -27,7 +27,7 @@ macro(setup_conan)
     endif()
 
     if(NOT BLAS_LIB_PATH)
-        set(REQUIREMENTS ${REQUIREMENTS} openblas/0.3.7)
+        set(REQUIREMENTS ${REQUIREMENTS} openblas/0.3.9)
     endif()
 
     if(BUILD_TESTS)
