@@ -29,6 +29,7 @@ macro(setup_conan)
     if(NOT BLAS_LIB_PATH)
         set(REQUIREMENTS ${REQUIREMENTS} openblas/0.3.7)
         set(CONAN_OPTIONS ${CONAN_OPTIONS} "openblas:build_lapack=True")
+        set(CONAN_OPTIONS ${CONAN_OPTIONS} "openblas:shared=True")
     endif()
 
     if(BUILD_TESTS)
@@ -40,7 +41,7 @@ macro(setup_conan)
     conan_cmake_run(PROFILE default
                     REQUIRES ${REQUIREMENTS}
                     OPTIONS ${CONAN_OPTIONS}
-                    ENV CONAN_CMAKE_PROGRAM=${CMAKE_COMMAND} OPENBLAS_USE64BITINT=1
+                    ENV CONAN_CMAKE_PROGRAM=${CMAKE_COMMAND}
                     BASIC_SETUP CMAKE_TARGETS KEEP_RPATHS
                     BUILD missing)
 endmacro()
