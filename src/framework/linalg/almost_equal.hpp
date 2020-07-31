@@ -82,7 +82,7 @@ bool almost_equal(T f1, T f2,
                   T max_relative_diff) {
   T diff = std::abs(f1 - f2);
   if (diff <= max_diff) return true;
-  std::cout << diff << std::endl;
+ // std::cout << diff << std::endl;
   return diff <=
          max_relative_diff * std::max(std::abs(f1), std::abs(f2));
 }

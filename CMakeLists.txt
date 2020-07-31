@@ -37,13 +37,16 @@ configure_file("${PROJECT_SOURCE_DIR}/contrib/standalone/version.hpp.in"
 set(AER_SIMULATOR_CPP_SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 set(AER_SIMULATOR_CPP_MAIN
     "${PROJECT_SOURCE_DIR}/contrib/standalone/qasm_simulator.cpp")
-set(AER_SIMULATOR_CPP_EXTERNAL_LIBS "${USER_LIB_PATH}")
+set(AER_SIMULATOR_CPP_EXTERNAL_LIBS 
+	"${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib"
+	"${USER_LIB_PATH}")
 
 set(AER_COMPILER_DEFINITIONS "")
 
 # TODO: We may want to change the prefix path for all the environments
 if(WIN32)
 	set(CMAKE_PREFIX_PATH "${AER_SIMULATOR_CPP_EXTERNAL_LIBS} ${CMAKE_PREFIX_PATH}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" " /bigobj")
 endif()
 
 # Adding support for CCache
@@ -156,11 +159,41 @@ if(STATIC_LINKING)
 	set(BLA_STATIC TRUE)
 endif()
 
+#if(BLAS_LIB_PATH)
+#	find_BLAS_in_specific_path(${BLAS_LIB_PATH})
+#else()
+#	set(BLAS_LIBRARIES CONAN_PKG::openblas)
+#endif()
+
 if(BLAS_LIB_PATH)
 	find_BLAS_in_specific_path(${BLAS_LIB_PATH})
 else()
-	set(BLAS_LIBRARIES CONAN_PKG::openblas)
+	if(APPLE)
+		message(STATUS  "Looking for Apple BLAS library...")
+		set(BLA_VENDOR "Apple")
+	else()
+		message(STATUS "Looking for OpenBLAS library...")
+		set(BLA_VENDOR "OpenBLAS")
+	endif()
+	if(WIN32)
+		message(STATUS "Uncompressing OpenBLAS static library...")
+		execute_process(COMMAND ${CMAKE_COMMAND} -E tar "xvfj" "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/openblas.7z" WORKING_DIRECTORY  "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/")
+		set(AER_LIBRARIES ${AER_LIBRARIES} "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/flang.lib")
+		set(AER_LIBRARIES ${AER_LIBRARIES} "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/flangmain.lib")
+		set(AER_LIBRARIES ${AER_LIBRARIES} "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/flangrti.lib")
+		set(AER_LIBRARIES ${AER_LIBRARIES} "${AER_SIMULATOR_CPP_SRC_DIR}/third-party/win64/lib/ompstub.lib")	
+	endif()
+	find_package(BLAS QUIET)
+	if(NOT BLAS_FOUND)
+		message(STATUS "OpenBLAS not found. Looking for any other BLAS library...")
+		unset(BLA_VENDOR)
+		find_package(BLAS REQUIRED)
+	endif()
 endif()
+
+message(STATUS "BLAS library found: ${BLAS_LIBRARIES}")
+
+
 message(STATUS "BLAS library found: ${BLAS_LIBRARIES}")
 
 # Windows don't have a DL library (dlopen, dlclose, etc...)

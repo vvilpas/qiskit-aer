@@ -110,19 +110,19 @@ void eigensystem_psd_hetrd(const matrix<std::complex<double>>& psd_matrix,
 
   AerBlas::f77::zhetrd(&uplo, &n, a, &lda, d, e, tau, work1, &lwork, &info);
 
-#ifdef DEBUG
-  std::cout << "diag_elems: ";
-  for(auto v : eigenvalues )
-    std::cout << v << ", ";
-  std::cout << std::endl;
-  // mat must be square, output references must be empty
-  std::cout << "zhetrd return: " << info << std::endl;
-  if ( info != 0 ) {
-    std::cerr << "error: zhetrd returned non-zero exit code : " 
-              << info << std::endl;
-    info = 0;
-  }
-#endif
+//#ifdef DEBUG
+//  std::cout << "diag_elems: ";
+//  for(auto v : eigenvalues )
+//    std::cout << v << ", ";
+//  std::cout << std::endl;
+//  // mat must be square, output references must be empty
+//  std::cout << "zhetrd return: " << info << std::endl;
+//  if ( info != 0 ) {
+//    std::cerr << "error: zhetrd returned non-zero exit code : " 
+//              << info << std::endl;
+//    info = 0;
+//  }
+//#endif
 
   // we don't allocate all at once to keep peak memory down
   delete[] work1;
@@ -134,19 +134,19 @@ void eigensystem_psd_hetrd(const matrix<std::complex<double>>& psd_matrix,
   // *** on exit e has been destroyed ***
     zpteqr_(&compz, &n, d, e, z, &ldz, work2, &info);
 
-#ifdef DEBUG
-  std::cout << "eigenvalues: ";
-  for(auto v : eigenvalues )
-    std::cout << v << ", ";
-  std::cout << std::endl;
- 
-  std::cout << "zpteqr return: " << info << std::endl;
-  if ( info != 0 ) {
-    std::cerr << "error: zpteqr returned non-zero exit code : " 
-              << info << std::endl;
-    info = 0;
-  }
-#endif
+//#ifdef DEBUG
+//  std::cout << "eigenvalues: ";
+//  for(auto v : eigenvalues )
+//    std::cout << v << ", ";
+//  std::cout << std::endl;
+// 
+//  std::cout << "zpteqr return: " << info << std::endl;
+//  if ( info != 0 ) {
+//    std::cerr << "error: zpteqr returned non-zero exit code : " 
+//              << info << std::endl;
+//    info = 0;
+//  }
+//#endif
 
   // copy d into eigenvalues
   eigenvalues.clear();
