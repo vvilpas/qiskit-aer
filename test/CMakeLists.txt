@@ -36,3 +36,8 @@ endfunction()
 #aer_add_test(test_snapshot_bdd "src/test_snapshot_bdd.cpp")
 #aer_add_test(test_utils "src/test_utils.cpp")
 aer_add_test(test_linalg "src/test_linalg.cpp")
+if(WIN32 AND NOT BLAS_LIB_PATH)
+    add_custom_command(TARGET test_linalg POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                       ${OPENBLAS_DLLs}
+					   "${PROJECT_SOURCE_DIR}/test")
+endif()
