@@ -10,11 +10,110 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+from abc import ABC, abstractmethod
 from typing import Callable, Union, List, Optional
 import numpy as np
 
 from .signals import VectorSignal, Signal
 from qiskit.quantum_info.operators import Operator
+
+class BaseOperatorModel(ABC):
+    """Abstract interface for an operator model.
+    """
+
+    @property
+    @abstractmethod
+    def signals(self):
+        """Return signals."""
+        pass
+
+    @signals.setter
+    @abstractmethod
+    def signals(self, signals):
+        """Set signals. If signal_mapping is not None treat this as the input.
+        Carrier frequencies given in the resulting signals should overwrite the
+        internal carrier frequencies.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def signal_mapping(self):
+        """Return signal mapping."""
+        pass
+
+    @signal_mapping.setter
+    @abstractmethod
+    def signal_mapping(self, signal_mapping):
+        """Set signal mapping."""
+        pass
+
+    @property
+    @abstractmethod
+    def carrier_freqs(self):
+        """Get the carrier frequencies for each operator."""
+        pass
+
+    @carrier_freqs.setter
+    @abstractmethod
+    def carrier_freqs(self, carrier_freqs):
+        """Set the carrier frequencies for each operator, overriding
+        any frequency set in self.signals.
+
+        The main purpose of this is to enable setting carrier frequencies
+        before any signals are set, as carrier frequencies can play a part in
+        pre-computations.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def frame_operator(self):
+        """Get the frame operator."""
+        pass
+
+    @frame_operator.setter
+    @abstractmethod
+    def frame_operator(self, frame_operator):
+        """Set the frame operator."""
+        pass
+
+    @property
+    @abstractmethod
+    def cutoff_freq(self):
+        """Get cutoff frequency."""
+        pass
+
+    @cutoff_freq.setter
+    @abstractmethod
+    def cutoff_freq(self, cutoff_freq):
+        """Set cutoff frequency."""
+        pass
+
+    @abstractmethod
+    def evaluate(self, t: float) -> np.array:
+        """Evaluate the model at a given time."""
+        pass
+
+    @abstractmethod
+    def lmult(self, t: float, y: np.array) -> np.array:
+        """Left multiply the model on an array of suitable shape at a given
+        time.
+        """
+        pass
+
+    @abstractmethod
+    def rmult(self, t: float, y: np.array) -> np.array:
+        """Right multiply the model on an array of suitable shape at a given
+        time.
+        """
+        pass
+
+    @abstractmethod
+    def evaluate_decomposition(self, t: float) -> np.array:
+        """Evaluate the canonical frame decomposition."""
+        pass
+
 
 class OperatorModel:
     """OperatorModel representing a sum of :class:`Operator` objects with
@@ -455,8 +554,10 @@ class FrameFreqHelper:
         if not y_in_frame_basis:
             out = self.state_into_frame_basis(out)
 
+        # go into the frame
         out = np.diag(np.exp(- t * self.frame_diag)) @ out
 
+        # if output is requested to not be in the frame basis, convert it
         if not return_in_frame_basis:
             out = self.state_out_of_frame_basis(out)
 
