@@ -37,7 +37,7 @@ class BMDE_Solver:
         elif bmde_problem.interval is not None:
             t0 = bmde_problem.interval[0]
 
-        self.generator = bmde_problem._generator
+        self._generator = bmde_problem._generator
 
         # setup solver method
         if options is None:
@@ -65,10 +65,10 @@ class BMDE_Solver:
             self.y = bmde_problem.y0
 
         # set RHS functions to evaluate in frame and frame basis
-        rhs_dict = {'rhs': lambda t, y: self.generator.lmult(t, y,
-                                                             in_frame_basis=True),
-                    'generator': lambda t: self.generator.evaluate(t,
-                                                                   in_frame_basis=True)}
+        rhs_dict = {'rhs': lambda t, y: self._generator.lmult(t, y,
+                                                              in_frame_basis=True),
+                    'generator': lambda t: self._generator.evaluate(t,
+                                                                    in_frame_basis=True)}
         self._method.set_rhs(rhs_dict)
 
     @property
@@ -123,10 +123,10 @@ class BMDE_Solver:
         if y_in_frame:
             # if y is already in the frame, only need to convert into
             # frame basis
-            new_y = self.generator._frame_freq_helper.state_into_frame_basis(new_y)
+            new_y = self._generator._frame_freq_helper.state_into_frame_basis(new_y)
         else:
             # if y not in frame, convert it into frame and into frame basis
-            new_y = self.generator._frame_freq_helper.state_into_frame(self.t,
+            new_y = self._generator._frame_freq_helper.state_into_frame(self.t,
                                                                        new_y,
                                                                        y_in_frame_basis=False,
                                                                        return_in_frame_basis=True)
@@ -157,13 +157,13 @@ class BMDE_Solver:
         if return_in_frame:
             # if the result is to be returned in frame, simply take the state out
             # of the frame basis
-            return_y = self.generator._frame_freq_helper.state_out_of_frame_basis(return_y)
+            return_y = self._generator._frame_freq_helper.state_out_of_frame_basis(return_y)
         else:
             # if the result is to be returned out of the frame, apply the
             # state_out_of_frame function and specify that the input is in
             # the frame basis, but the return value should not be in the frame
             # basis
-            return_y = self.generator._frame_freq_helper.state_out_of_frame(self.t,
+            return_y = self._generator._frame_freq_helper.state_out_of_frame(self.t,
                                                                             return_y,
                                                                             y_in_frame_basis=True,
                                                                             return_in_frame_basis=False)

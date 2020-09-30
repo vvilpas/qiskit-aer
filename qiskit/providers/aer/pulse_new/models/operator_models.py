@@ -13,6 +13,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Union, List, Optional
 import numpy as np
+from copy import deepcopy
 
 from .signals import VectorSignal, Signal
 from qiskit.quantum_info.operators import Operator
@@ -20,30 +21,6 @@ from qiskit.quantum_info.operators import Operator
 class BaseOperatorModel(ABC):
     """Abstract interface for an operator model.
     """
-
-    @property
-    @abstractmethod
-    def signals(self):
-        """Return signals."""
-        pass
-
-    @property
-    @abstractmethod
-    def carrier_freqs(self):
-        """Get the carrier frequencies for each operator."""
-        pass
-
-    @carrier_freqs.setter
-    @abstractmethod
-    def carrier_freqs(self, carrier_freqs):
-        """Set the carrier frequencies for each operator, overriding
-        any frequency set in self.signals.
-
-        The main purpose of this is to enable setting carrier frequencies
-        before any signals are set, as carrier frequencies can play a part in
-        pre-computations.
-        """
-        pass
 
     @property
     @abstractmethod
@@ -95,8 +72,31 @@ class BaseOperatorModel(ABC):
         pass
 
     @abstractmethod
+    def state_into_frame(self,
+                         t,
+                         y,
+                         y_in_frame_basis=False,
+                         return_in_frame_basis=False):
+        """For frame operator F, return exp(-tF) @ y."""
+
+    def state_out_of_frame(self,
+                           t,
+                           y,
+                           y_in_frame_basis=False,
+                           return_in_frame_basis=False):
+        return self.state_into_frame(-t, y,
+                                     y_in_frame_basis,
+                                     return_in_frame_basis)
+
+
+    @abstractmethod
     def evaluate_decomposition(self, t: float) -> np.array:
         """Evaluate the canonical frame decomposition."""
+        pass
+
+    @abstractmethod
+    def copy(self):
+        """Return a copy of self."""
         pass
 
 
@@ -271,7 +271,7 @@ class OperatorModel(BaseOperatorModel):
             if np.linalg.norm(frame_operator + frame_operator.conj()) > 10**-10:
                 raise Exception("""frame_operator must be an
                                    anti-Hermitian matrix.""")
-        else:
+        elif frame_operator is not None:
             # otherwise, cast as Operator and verify anti-Hermitian
             frame_operator = Operator(frame_operator)
 
@@ -367,8 +367,21 @@ class OperatorModel(BaseOperatorModel):
 
         return self._frame_freq_helper.evaluate(0, drift_env_vals)
 
+    def state_into_frame(self,
+                         t: float,
+                         y: np.array,
+                         y_in_frame_basis: bool = False,
+                         return_in_frame_basis: bool = False):
+
+        return self._frame_freq_helper.state_into_frame(t, y,
+                                                        y_in_frame_basis,
+                                                        return_in_frame_basis)
+
     def evaluate_decomposition(self, t: float) -> np.array:
         raise Exception("Not implemented.")
+
+    def copy(self):
+        return deepcopy(self)
 
     def _construct_frame_helper(self):
         """Helper function for constructing frame helper from relevant
@@ -557,27 +570,6 @@ class FrameFreqHelper:
             out = self.state_out_of_frame_basis(out)
 
         return out
-
-    def state_out_of_frame(self,
-                           t: float,
-                           y: np.array,
-                           y_in_frame_basis: bool = False,
-                           return_in_frame_basis: bool = False):
-        """Bring a state out of the frame, i.e. return exp(Ft) @ y.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the frame basis
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        # same calculation as state_into_frame, just with -time
-        return self.state_into_frame(-t,
-                                     y,
-                                     y_in_frame_basis,
-                                     return_in_frame_basis)
 
     def state_into_frame_basis(self, y: np.array):
         return self.frame_basis_adjoint @ y
