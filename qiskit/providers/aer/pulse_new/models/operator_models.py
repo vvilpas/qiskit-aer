@@ -27,27 +27,6 @@ class BaseOperatorModel(ABC):
         """Return signals."""
         pass
 
-    @signals.setter
-    @abstractmethod
-    def signals(self, signals):
-        """Set signals. If signal_mapping is not None treat this as the input.
-        Carrier frequencies given in the resulting signals should overwrite the
-        internal carrier frequencies.
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def signal_mapping(self):
-        """Return signal mapping."""
-        pass
-
-    @signal_mapping.setter
-    @abstractmethod
-    def signal_mapping(self, signal_mapping):
-        """Set signal mapping."""
-        pass
-
     @property
     @abstractmethod
     def carrier_freqs(self):
@@ -109,13 +88,19 @@ class BaseOperatorModel(ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def drift(self) -> np.array:
+        """Evaluate the constant part of the model."""
+        pass
+
     @abstractmethod
     def evaluate_decomposition(self, t: float) -> np.array:
         """Evaluate the canonical frame decomposition."""
         pass
 
 
-class OperatorModel:
+class OperatorModel(BaseOperatorModel):
     """OperatorModel representing a sum of :class:`Operator` objects with
     time dependent coefficients.
 
@@ -248,14 +233,21 @@ class OperatorModel:
                 raise Exception("""signals needs to have the same length as
                                     operators.""")
 
-            # check if the new carrier frequencies are different from the old.
-            # if yes, update them and reinstantiate the frame helper.
-            new_freqs = signals.carrier_freqs
-            if any(signals.carrier_freqs != self._carrier_freqs):
-                self._carrier_freqs = signals.carrier_freqs
-                self._construct_frame_helper()
-
+            # update internal carrier freqs and signals
+            self.carrier_freqs = signals.carrier_freqs
             self._signals = signals
+
+    @property
+    def carrier_freqs(self) -> np.array:
+        """Return the internally stored carrier frequencies."""
+        return self._carrier_freqs
+
+    @carrier_freqs.setter
+    def carrier_freqs(self, carrier_freqs) -> np.array:
+        """Set the internally stored carrier frequencies."""
+        if any(carrier_freqs != self._carrier_freqs):
+            self._carrier_freqs = carrier_freqs
+            self._construct_frame_helper()
 
     @property
     def frame_operator(self) -> Union[Operator, np.array]:
@@ -374,6 +366,9 @@ class OperatorModel:
         drift_env_vals = self.signals.drift_array
 
         return self._frame_freq_helper.evaluate(0, drift_env_vals)
+
+    def evaluate_decomposition(self, t: float) -> np.array:
+        raise Exception("Not implemented.")
 
     def _construct_frame_helper(self):
         """Helper function for constructing frame helper from relevant
