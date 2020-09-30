@@ -123,13 +123,13 @@ class BMDE_Solver:
         if y_in_frame:
             # if y is already in the frame, only need to convert into
             # frame basis
-            new_y = self._generator._frame_freq_helper.state_into_frame_basis(new_y)
+            new_y = self._generator.state_into_frame_basis(new_y)
         else:
             # if y not in frame, convert it into frame and into frame basis
-            new_y = self._generator._frame_freq_helper.state_into_frame(self.t,
-                                                                       new_y,
-                                                                       y_in_frame_basis=False,
-                                                                       return_in_frame_basis=True)
+            new_y = self._generator.state_into_frame(self.t,
+                                                     new_y,
+                                                     y_in_frame_basis=False,
+                                                     return_in_frame_basis=True)
 
         # set the converted state into the internal method state
         self._method.y = new_y
@@ -157,16 +157,16 @@ class BMDE_Solver:
         if return_in_frame:
             # if the result is to be returned in frame, simply take the state out
             # of the frame basis
-            return_y = self._generator._frame_freq_helper.state_out_of_frame_basis(return_y)
+            return_y = self._generator.state_out_of_frame_basis(return_y)
         else:
             # if the result is to be returned out of the frame, apply the
             # state_out_of_frame function and specify that the input is in
             # the frame basis, but the return value should not be in the frame
             # basis
-            return_y = self._generator._frame_freq_helper.state_out_of_frame(self.t,
-                                                                            return_y,
-                                                                            y_in_frame_basis=True,
-                                                                            return_in_frame_basis=False)
+            return_y = self._generator.state_out_of_frame(self.t,
+                                                          return_y,
+                                                          y_in_frame_basis=True,
+                                                          return_in_frame_basis=False)
 
         if self._state_type_converter is None:
             return return_y

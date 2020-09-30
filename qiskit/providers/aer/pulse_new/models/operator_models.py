@@ -51,19 +51,41 @@ class BaseOperatorModel(ABC):
         """Evaluate the model at a given time."""
         pass
 
-    @abstractmethod
-    def lmult(self, t: float, y: np.array) -> np.array:
-        """Left multiply the model on an array of suitable shape at a given
-        time.
+    def lmult(self,
+              time: float,
+              y: np.array,
+              in_frame_basis: bool = False) -> np.array:
         """
-        pass
+        Return the product evaluate(t) @ y. Default implementation is to
+        call evaluate then multiply.
 
-    @abstractmethod
-    def rmult(self, t: float, y: np.array) -> np.array:
-        """Right multiply the model on an array of suitable shape at a given
-        time.
+        Args:
+            time: Time at which to create the generator.
+            y: operator or vector to apply the model to.
+            in_frame_basis: whether to evaluate in the frame basis
+
+        Returns:
+            np.array: the product
         """
-        pass
+        return np.dot(self.evaluate(time, in_frame_basis), y)
+
+    def rmult(self,
+              time: float,
+              y: np.array,
+              in_frame_basis: bool = False) -> np.array:
+        """
+        Return the product y @ evaluate(t). Default implementation is to call
+        evaluate then multiply.
+
+        Args:
+            time: Time at which to create the generator.
+            y: operator or vector to apply the model to.
+            in_frame_basis: whether to evaluate in the frame basis
+
+        Returns:
+            np.array: the product
+        """
+        return np.dot(y, self.evaluate(time, in_frame_basis))
 
     @property
     @abstractmethod
@@ -73,21 +95,38 @@ class BaseOperatorModel(ABC):
 
     @abstractmethod
     def state_into_frame(self,
-                         t,
-                         y,
-                         y_in_frame_basis=False,
-                         return_in_frame_basis=False):
-        """For frame operator F, return exp(-tF) @ y."""
+                         t: float,
+                         y: np.array,
+                         y_in_frame_basis: Optional[bool] = False,
+                         return_in_frame_basis: Optional[bool] = False):
+        """Take a state into the frame, i.e. return exp(-Ft) @ y.
+
+        Args:
+            t: time
+            y: state (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+        pass
 
     def state_out_of_frame(self,
-                           t,
-                           y,
-                           y_in_frame_basis=False,
-                           return_in_frame_basis=False):
+                           t: float,
+                           y: np.array,
+                           y_in_frame_basis: Optional[bool] = False,
+                           return_in_frame_basis: Optional[bool] = False):
         return self.state_into_frame(-t, y,
                                      y_in_frame_basis,
                                      return_in_frame_basis)
 
+    @abstractmethod
+    def state_into_frame_basis(self, y: np.array) -> np.array:
+        """Transform y into the frame basis."""
+
+    @abstractmethod
+    def state_out_of_frame_basis(self, y: np.array) -> np.array:
+        """Transform y out of the frame basis."""
 
     @abstractmethod
     def evaluate_decomposition(self, t: float) -> np.array:
@@ -268,7 +307,7 @@ class OperatorModel(BaseOperatorModel):
 
         if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
             # if 1d array check purely imaginary
-            if np.linalg.norm(frame_operator + frame_operator.conj()) > 10**-10:
+            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
                 raise Exception("""frame_operator must be an
                                    anti-Hermitian matrix.""")
         elif frame_operator is not None:
@@ -318,40 +357,6 @@ class OperatorModel(BaseOperatorModel):
                                                 sig_envelope_vals,
                                                 in_frame_basis)
 
-    def lmult(self,
-              time: float,
-              y: np.array,
-              in_frame_basis: bool = False) -> np.array:
-        """
-        Return the product evaluate(t) @ y.
-
-        Args:
-            time: Time at which to create the generator.
-            y: operator or vector to apply the model to.
-            in_frame_basis: whether to evaluate in the frame basis
-
-        Returns:
-            np.array: the product
-        """
-        return np.dot(self.evaluate(time, in_frame_basis), y)
-
-    def rmult(self,
-              time: float,
-              y: np.array,
-              in_frame_basis: bool = False) -> np.array:
-        """
-        Return the product y @ evaluate(t).
-
-        Args:
-            time: Time at which to create the generator.
-            y: operator or vector to apply the model to.
-            in_frame_basis: whether to evaluate in the frame basis
-
-        Returns:
-            np.array: the product
-        """
-        return np.dot(y, self.evaluate(time, in_frame_basis))
-
     @property
     def drift(self) -> np.array:
         """Return the part of the model with only Constant coefficients as a
@@ -372,10 +377,25 @@ class OperatorModel(BaseOperatorModel):
                          y: np.array,
                          y_in_frame_basis: bool = False,
                          return_in_frame_basis: bool = False):
+        """Take a state into the frame, i.e. return exp(-Ft) @ y.
 
+        Args:
+            t: time
+            y: state (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the frame basis
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
         return self._frame_freq_helper.state_into_frame(t, y,
                                                         y_in_frame_basis,
                                                         return_in_frame_basis)
+
+    def state_into_frame_basis(self, y: np.array):
+        return self._frame_freq_helper.state_into_frame_basis(y)
+
+    def state_out_of_frame_basis(self, y: np.array):
+        return self._frame_freq_helper.state_out_of_frame_basis(y)
 
     def evaluate_decomposition(self, t: float) -> np.array:
         raise Exception("Not implemented.")
@@ -444,7 +464,7 @@ class FrameFreqHelper:
         if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
 
             # verify that it is anti-hermitian (i.e. purely imaginary)
-            if np.linalg.norm(frame_operator + frame_operator.conj()) > 10**-10:
+            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
                 raise Exception("""frame_operator must be an
                                    anti-Hermitian matrix.""")
 
