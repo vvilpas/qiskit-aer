@@ -25,6 +25,123 @@ class TestFrame(unittest.TestCase):
         self.Y = Operator.from_label('Y')
         self.Z = Operator.from_label('Z')
 
+    def test_instantiation_errors(self):
+        """Check different modes of error raising for frame setting."""
+
+        # 1d array
+        try:
+            frame = Frame(np.array([1., 1.]))
+        except Exception as e:
+            self.assertTrue('anti-Hermitian' in str(e))
+
+        # 2d array
+        try:
+            frame = Frame(np.array([[1., 0.], [0., 1.]]))
+        except Exception as e:
+            self.assertTrue('anti-Hermitian' in str(e))
+
+        # Operator
+        try:
+            frame = Frame(self.Z)
+        except Exception as e:
+            self.assertTrue('anti-Hermitian' in str(e))
+
+    def test_state_transformations_no_frame(self):
+        """Test frame transformations with no frame."""
+
+        frame = Frame(np.zeros(2))
+
+        t = 0.123
+        y = np.array([1., 1j])
+        out = frame.state_into_frame(t, y)
+        self.assertAlmostEqual(out, y)
+        out = frame.state_out_of_frame(t, y)
+        self.assertAlmostEqual(out, y)
+
+        t = 100.12498
+        y = np.eye(2)
+        out = frame.state_into_frame(t, y)
+        self.assertAlmostEqual(out, y)
+        out = frame.state_out_of_frame(t, y)
+        self.assertAlmostEqual(out, y)
+
+    def test_state_into_frame(self):
+        """Test state_into_frame with a non-trival frame."""
+        frame_op = -1j * np.pi * (self.X + 0.1 * self.Y + 12. * self.Z).data
+        frame = Frame(frame_op)
+
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+        Uadj = U.conj().transpose()
+
+        t = 1312.132
+        y0 = np.array([[1., 2.], [3., 4.]])
+
+        # compute frame rotation to enter frame
+        emFt = expm(-frame_op * t)
+
+        # test without optional parameters
+        value = frame.state_into_frame(t, y0)
+        expected = emFt @ y0
+        # these tests need reduced absolute tolerance due to the time value
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with y0 assumed in frame basis
+        value = frame.state_into_frame(t, y0, y_in_frame_basis=True)
+        expected = emFt @ U @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with output request in frame basis
+        value = frame.state_into_frame(t, y0, return_in_frame_basis=True)
+        expected = Uadj @ emFt @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with both input and output in frame basis
+        value = frame.state_into_frame(t, y0,
+                                          y_in_frame_basis=True,
+                                          return_in_frame_basis=True)
+        expected = Uadj @ emFt @ U @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+    def test_state_out_of_frame(self):
+        """Test state_out_of_frame with a non-trival frame."""
+        frame_op = -1j * np.pi * (3.1 * self.X + 1.1 * self.Y +
+                                  12. * self.Z).data
+        frame = Frame(frame_op)
+
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+        Uadj = U.conj().transpose()
+
+        t = 122.132
+        y0 = np.array([[1., 2.], [3., 4.]])
+
+        # compute frame rotation to exit frame
+        epFt = expm(frame_op * t)
+
+        # test without optional parameters
+        value = frame.state_out_of_frame(t, y0)
+        expected = epFt @ y0
+        # these tests need reduced absolute tolerance due to the time value
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with y0 assumed in frame basis
+        value = frame.state_out_of_frame(t, y0, y_in_frame_basis=True)
+        expected = epFt @ U @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with output request in frame basis
+        value = frame.state_out_of_frame(t, y0, return_in_frame_basis=True)
+        expected = Uadj @ epFt @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+        # test with both input and output in frame basis
+        value = frame.state_out_of_frame(t, y0,
+                                            y_in_frame_basis=True,
+                                            return_in_frame_basis=True)
+        expected = Uadj @ epFt @ U @ y0
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
     def test_evaluate_canonical_operator_combo_no_cutoff(self):
         """test evaluate with a non-diagonal frame and no cutoff freq."""
 
