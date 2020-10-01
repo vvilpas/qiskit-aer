@@ -25,7 +25,7 @@ class BaseFrame(ABC):
         - F is anti-Hermitian
     """
 
-    @proeprty
+    @property
     @abstractmethod
     def frame_operator(self) -> np.array:
         """The original frame operator."""
@@ -100,7 +100,6 @@ class BaseFrame(ABC):
 
         return np.array([self.operator_into_frame_basis(o) for o in operators])
 
-    @abstractmethod
     def state_into_frame(t: float,
                          y: np.array,
                          y_in_frame_basis: Optional[bool] = False,
@@ -314,6 +313,63 @@ class BaseFrame(ABC):
         else:
             return (self.frame_basis @ op_in_frame_basis @
                     self.frame_basis_adjoint)
+
+def Frame(BaseFrame):
+
+    def __init__(self, frame_operator: Union[Operator, np.array]):
+
+        # if None, set to a 1d array of zeros
+        if frame_operator is None:
+            frame_operator = np.zeros(operators[0].dim[0])
+
+        # if frame_operator is a 1d array, assume already diagonalized
+        if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
+
+            # verify that it is anti-hermitian (i.e. purely imaginary)
+            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
+                raise Exception("""frame_operator must be an
+                                   anti-Hermitian matrix.""")
+
+            self.frame_diag = frame_operator
+            self.frame_basis = np.eye(len(frame_operator))
+            self.frame_basis_adjoint = self.frame_basis
+        # if not, diagonalize it
+        else:
+            # Ensure that it is an Operator object
+            frame_operator = Operator(frame_operator)
+
+            # verify anti-hermitian
+            herm_part = frame_operator + frame_operator.adjoint()
+            if herm_part != Operator(np.zeros(frame_operator.dim)):
+                raise Exception("""frame_operator must be an
+                                   anti-Hermitian matrix.""")
+
+            # diagonalize with eigh, utilizing assumption of anti-hermiticity
+            frame_diag, frame_basis = np.linalg.eigh(1j * frame_operator.data)
+
+            self.frame_diag = -1j * frame_diag
+            self.frame_basis = frame_basis
+            self.frame_basis_adjoint = frame_basis.conj().transpose()
+
+    @property
+    def frame_operator(self) -> np.array:
+        """The original frame operator."""
+        return self._frame_operator
+
+    @property
+    def frame_diag(self) -> np.array:
+        """Diagonal of the frame operator."""
+        return self._frame_diag
+
+    @property
+    def frame_basis(self) -> np.array:
+        """Array containing diagonalizing unitary."""
+        return self._frame_basis
+
+    @property
+    def frame_basis_adjoint(self) -> np.array:
+        """Adjoint of the diagonalizing unitary."""
+        return self._frame_basis_adjoint
 
 
 # type handling
