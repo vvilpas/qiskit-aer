@@ -155,7 +155,7 @@ class BaseFrame(ABC):
                                  operator: Union[Operator, np.array],
                                  operator_in_frame_basis: Optional[bool] = False,
                                  return_in_frame_basis: Optional[bool] = False):
-        """Return exp(Ft) @ operator @ exp(-Ft)
+        """Return exp(-Ft) @ operator @ exp(Ft)
 
         Args:
             t: time
