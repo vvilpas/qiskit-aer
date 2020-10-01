@@ -28,6 +28,8 @@ template <typename Container, typename data_t = double> class Transformer {
   // TODO: This class should have the indexes.hpp moved inside it
 
 public:
+
+  virtual ~Transformer() {}
   //-----------------------------------------------------------------------
   // Apply Matrices
   //-----------------------------------------------------------------------

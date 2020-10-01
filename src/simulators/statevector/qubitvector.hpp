@@ -336,7 +336,12 @@ protected:
     return (num_qubits_ > omp_threshold_ && omp_threads_ > 1) ? omp_threads_: 1;
   }
 
-  //-----------------------------------------------------------------------
+  void set_transformer_method(){
+    transformer_ = is_avx2_supported() ? std::make_unique<TransformerAVX2<std::complex<data_t>*, data_t>>()
+                                       : std::make_unique<Transformer<std::complex<data_t>*, data_t>>();
+  }
+
+    //-----------------------------------------------------------------------
   // Error Messages
   //-----------------------------------------------------------------------
 
@@ -566,9 +571,7 @@ template <typename data_t>
 QubitVector<data_t>::QubitVector(size_t num_qubits)
   : num_qubits_(0), data_(nullptr), checkpoint_(0) {
     set_num_qubits(num_qubits);
-
-    transformer_ = is_avx2_supported() ? std::make_unique<TransformerAVX2<std::complex<data_t>*, data_t>>()
-        : std::make_unique<Transformer<std::complex<data_t>*, data_t>>();
+    set_transformer_method();
   }
 
 template <typename data_t>
