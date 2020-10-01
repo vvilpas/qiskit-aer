@@ -16,6 +16,7 @@ import numpy as np
 from copy import deepcopy
 
 from .signals import VectorSignal, Signal
+from .frame import Frame
 from qiskit.quantum_info.operators import Operator
 
 class BaseOperatorModel(ABC):
@@ -213,9 +214,16 @@ class OperatorModel(BaseOperatorModel):
             cutoff_freq: Frequency cutoff when evaluating the model.
         """
 
+        self._frame_operator = frame_operator
+
+        self._frame = None
+        if frame_operator is None:
+            self._frame = Frame(np.zeros(operators[0].dim[0]))
+        else:
+            self._frame = Frame(frame_operator)
+
         self._operators = operators
 
-        self._frame_operator = frame_operator
         self._cutoff_freq = cutoff_freq
 
         # initialize signal-related attributes
@@ -224,6 +232,9 @@ class OperatorModel(BaseOperatorModel):
         self._carrier_freqs = None
         self.signal_mapping = signal_mapping
 
+
+        self._freq_array = None
+        self._cutoff_array = None
         if signals is not None:
             # note: setting signals includes a call to _construct_frame_helper()
             self.signals = signals
@@ -320,6 +331,11 @@ class OperatorModel(BaseOperatorModel):
                                    anti-Hermitian matrix.""")
 
         self._frame_operator = frame_operator
+        self._frame = None
+        if frame_operator is None:
+            self._frame = Frame(np.zeros(self._operators[0].dim[0]))
+        else:
+            self._frame = Frame(frame_operator)
         self._construct_frame_helper()
 
     @property
@@ -353,9 +369,15 @@ class OperatorModel(BaseOperatorModel):
 
         sig_envelope_vals = self.signals.envelope_value(time)
 
-        return self._frame_freq_helper.evaluate(time,
-                                                sig_envelope_vals,
-                                                in_frame_basis)
+        #return self._frame_freq_helper.evaluate(time,
+        #                                        sig_envelope_vals,
+        #                                        in_frame_basis)
+        return self._frame.evaluate_operator_linear_combo(time,
+                                                          sig_envelope_vals,
+                                                          self._operators_in_frame_basis,
+                                                          self._freq_array,
+                                                          self._cutoff_array,
+                                                          in_frame_basis)
 
     @property
     def drift(self) -> np.array:
@@ -370,7 +392,12 @@ class OperatorModel(BaseOperatorModel):
 
         drift_env_vals = self.signals.drift_array
 
-        return self._frame_freq_helper.evaluate(0, drift_env_vals)
+        #return self._frame_freq_helper.evaluate(0, drift_env_vals)
+        return self._frame.evaluate_operator_linear_combo(0.,
+                                                          drift_env_vals,
+                                                          self._operators_in_frame_basis,
+                                                          self._freq_array,
+                                                          self._cutoff_array)
 
     def state_into_frame(self,
                          t: float,
@@ -387,15 +414,15 @@ class OperatorModel(BaseOperatorModel):
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
         """
-        return self._frame_freq_helper.state_into_frame(t, y,
-                                                        y_in_frame_basis,
-                                                        return_in_frame_basis)
+        return self._frame.state_into_frame(t, y,
+                                            y_in_frame_basis,
+                                            return_in_frame_basis)
 
     def state_into_frame_basis(self, y: np.array):
-        return self._frame_freq_helper.state_into_frame_basis(y)
+        return self._frame.state_into_frame_basis(y)
 
     def state_out_of_frame_basis(self, y: np.array):
-        return self._frame_freq_helper.state_out_of_frame_basis(y)
+        return self._frame.state_out_of_frame_basis(y)
 
     def evaluate_decomposition(self, t: float) -> np.array:
         raise Exception("Not implemented.")
@@ -407,10 +434,19 @@ class OperatorModel(BaseOperatorModel):
         """Helper function for constructing frame helper from relevant
         attributes.
         """
-        self._frame_freq_helper = FrameFreqHelper(self._operators,
-                                                  self._carrier_freqs,
-                                                  self.frame_operator,
-                                                  self.cutoff_freq)
+        carrier_freqs = None
+        if self.carrier_freqs is None:
+            carrier_freqs = np.zeros(len(self._operators))
+        else:
+            carrier_freqs = self.carrier_freqs
+
+
+        self._operators_in_frame_basis = self._frame.operators_into_frame_basis(self._operators)
+        self._freq_array, self._cutoff_array = self._frame._get_rotating_freq_and_cutoff_array(carrier_freqs, self.cutoff_freq)
+        #self._frame_freq_helper = FrameFreqHelper(self._operators,
+        #                                          self._carrier_freqs,
+        #                                          self.frame_operator,
+        #                                          self.cutoff_freq)
 
 
 class FrameFreqHelper:

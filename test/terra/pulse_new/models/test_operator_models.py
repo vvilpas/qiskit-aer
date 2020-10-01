@@ -226,7 +226,7 @@ class TestOperatorModel(unittest.TestCase):
 
     def test_cutoff_freq(self):
         """Test cutoff_freq"""
-
+        
         # enter frame of drift
         self.basic_model.frame_operator = self.basic_model.drift
 

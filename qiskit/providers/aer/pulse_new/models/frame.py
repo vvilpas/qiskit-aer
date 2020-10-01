@@ -100,7 +100,8 @@ class BaseFrame(ABC):
 
         return np.array([self.operator_into_frame_basis(o) for o in operators])
 
-    def state_into_frame(t: float,
+    def state_into_frame(self,
+                         t: float,
                          y: np.array,
                          y_in_frame_basis: Optional[bool] = False,
                          return_in_frame_basis: Optional[bool] = False):
@@ -257,8 +258,7 @@ class BaseFrame(ABC):
 
     def _get_rotating_freq_and_cutoff_array(self,
                                             carrier_freqs: np.array,
-                                            cutoff_freq: Optional[float] = None)
-                                            -> Tuple[np.array, Union[None, np.array]]:
+                                            cutoff_freq: Optional[float] = None) -> Tuple[np.array, Union[None, np.array]]:
         """Get frequency and cutoff arrays in basis in which F is diagonal.
         """
         # create difference matrix for diagonal elements
@@ -314,13 +314,13 @@ class BaseFrame(ABC):
             return (self.frame_basis @ op_in_frame_basis @
                     self.frame_basis_adjoint)
 
-def Frame(BaseFrame):
+class Frame(BaseFrame):
 
     def __init__(self, frame_operator: Union[Operator, np.array]):
 
         # if None, set to a 1d array of zeros
         if frame_operator is None:
-            frame_operator = np.zeros(operators[0].dim[0])
+            raise Exception("""frame_operator cannot be None.""")
 
         # if frame_operator is a 1d array, assume already diagonalized
         if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
@@ -330,9 +330,9 @@ def Frame(BaseFrame):
                 raise Exception("""frame_operator must be an
                                    anti-Hermitian matrix.""")
 
-            self.frame_diag = frame_operator
-            self.frame_basis = np.eye(len(frame_operator))
-            self.frame_basis_adjoint = self.frame_basis
+            self._frame_diag = frame_operator
+            self._frame_basis = np.eye(len(frame_operator))
+            self._frame_basis_adjoint = self.frame_basis
         # if not, diagonalize it
         else:
             # Ensure that it is an Operator object
@@ -347,9 +347,9 @@ def Frame(BaseFrame):
             # diagonalize with eigh, utilizing assumption of anti-hermiticity
             frame_diag, frame_basis = np.linalg.eigh(1j * frame_operator.data)
 
-            self.frame_diag = -1j * frame_diag
-            self.frame_basis = frame_basis
-            self.frame_basis_adjoint = frame_basis.conj().transpose()
+            self._frame_diag = -1j * frame_diag
+            self._frame_basis = frame_basis
+            self._frame_basis_adjoint = frame_basis.conj().transpose()
 
     @property
     def frame_operator(self) -> np.array:
