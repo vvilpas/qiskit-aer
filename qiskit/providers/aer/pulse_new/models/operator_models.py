@@ -95,41 +95,6 @@ class BaseOperatorModel(ABC):
         pass
 
     @abstractmethod
-    def state_into_frame(self,
-                         t: float,
-                         y: np.array,
-                         y_in_frame_basis: Optional[bool] = False,
-                         return_in_frame_basis: Optional[bool] = False):
-        """Take a state into the frame, i.e. return exp(-Ft) @ y.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        pass
-
-    def state_out_of_frame(self,
-                           t: float,
-                           y: np.array,
-                           y_in_frame_basis: Optional[bool] = False,
-                           return_in_frame_basis: Optional[bool] = False):
-        return self.state_into_frame(-t, y,
-                                     y_in_frame_basis,
-                                     return_in_frame_basis)
-
-    @abstractmethod
-    def state_into_frame_basis(self, y: np.array) -> np.array:
-        """Transform y into the frame basis."""
-
-    @abstractmethod
-    def state_out_of_frame_basis(self, y: np.array) -> np.array:
-        """Transform y out of the frame basis."""
-
-    @abstractmethod
     def evaluate_decomposition(self, t: float) -> np.array:
         """Evaluate the canonical frame decomposition."""
         pass
@@ -398,31 +363,6 @@ class OperatorModel(BaseOperatorModel):
                                                           self._operators_in_frame_basis,
                                                           self._freq_array,
                                                           self._cutoff_array)
-
-    def state_into_frame(self,
-                         t: float,
-                         y: np.array,
-                         y_in_frame_basis: bool = False,
-                         return_in_frame_basis: bool = False):
-        """Take a state into the frame, i.e. return exp(-Ft) @ y.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the frame basis
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        return self._frame.state_into_frame(t, y,
-                                            y_in_frame_basis,
-                                            return_in_frame_basis)
-
-    def state_into_frame_basis(self, y: np.array):
-        return self._frame.state_into_frame_basis(y)
-
-    def state_out_of_frame_basis(self, y: np.array):
-        return self._frame.state_out_of_frame_basis(y)
 
     def evaluate_decomposition(self, t: float) -> np.array:
         raise Exception("Not implemented.")
