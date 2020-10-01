@@ -23,7 +23,7 @@ namespace QV {
 
 template <typename T> using cvector_t = std::vector<std::complex<T>>;
 
-template <typename data_t = double> class Transformer {
+template <typename Container, typename data_t = double> class Transformer {
 
   // TODO: This class should have the indexes.hpp moved inside it
 
@@ -35,14 +35,13 @@ public:
   // Apply a N-qubit matrix to the state vector.
   // The matrix is input as vector of the column-major vectorized N-qubit
   // matrix.
-  template <typename Container>
-  static void apply_matrix(Container &data, size_t data_size, int threads,
+
+  virtual void apply_matrix(Container &data, size_t data_size, int threads,
                            const reg_t &qubits, const cvector_t<double> &mat);
 
   // Apply a N-qubit diagonal matrix to a array container
   // The matrix is input as vector of the matrix diagonal.
-  template <typename Container>
-  static void apply_diagonal_matrix(Container &data, size_t data_size,
+  virtual void apply_diagonal_matrix(Container &data, size_t data_size,
                                     int threads, const reg_t &qubits,
                                     const cvector_t<double> &diag);
 
@@ -50,24 +49,22 @@ protected:
   // Apply a N-qubit matrix to the state vector.
   // The matrix is input as vector of the column-major vectorized N-qubit
   // matrix.
-  template <size_t N, typename Container>
-  static void apply_matrix_n(Container &data, size_t data_size, int threads,
+  template <size_t N>
+  void apply_matrix_n(Container &data, size_t data_size, int threads,
                              const reg_t &qubits, const cvector_t<double> &mat);
 
   // Specialized single qubit apply matrix function
-  template <typename Container>
-  static void apply_matrix_1(Container &data, size_t data_size, int threads,
+  void apply_matrix_1(Container &data, size_t data_size, int threads,
                              const uint_t qubit, const cvector_t<double> &mat);
 
   // Specialized single qubit apply matrix function
-  template <typename Container>
-  static void apply_diagonal_matrix_1(Container &data, size_t data_size,
+  void apply_diagonal_matrix_1(Container &data, size_t data_size,
                                       int threads, const uint_t qubit,
                                       const cvector_t<double> &mat);
 
   // Convert a matrix to a different type
   // TODO: this makes an unnecessary copy when data_t = double.
-  static cvector_t<data_t> convert(const cvector_t<double> &v);
+  cvector_t<data_t> convert(const cvector_t<double> &v);
 };
 
 /*******************************************************************************
@@ -76,17 +73,16 @@ protected:
  *
  ******************************************************************************/
 
-template <typename data_t>
-cvector_t<data_t> Transformer<data_t>::convert(const cvector_t<double> &v) {
+template <typename Container, typename data_t>
+cvector_t<data_t> Transformer<Container, data_t>::convert(const cvector_t<double> &v) {
   cvector_t<data_t> ret(v.size());
   for (size_t i = 0; i < v.size(); ++i)
     ret[i] = v[i];
   return ret;
 }
 
-template <typename data_t>
-template <typename Container>
-void Transformer<data_t>::apply_matrix(Container &data, size_t data_size,
+template <typename Container, typename data_t>
+void Transformer<Container, data_t>::apply_matrix(Container &data, size_t data_size,
                                        int threads, const reg_t &qubits,
                                        const cvector_t<double> &mat) {
   // Static array optimized lambda functions
@@ -138,9 +134,9 @@ void Transformer<data_t>::apply_matrix(Container &data, size_t data_size,
   }
 }
 
-template <typename data_t>
-template <size_t N, typename Container>
-void Transformer<data_t>::apply_matrix_n(Container &data, size_t data_size,
+template <typename Container, typename data_t>
+template <size_t N>
+void Transformer<Container, data_t>::apply_matrix_n(Container &data, size_t data_size,
                                          int threads, const reg_t &qs,
                                          const cvector_t<double> &mat) {
   const size_t DIM = 1ULL << N;
@@ -162,9 +158,8 @@ void Transformer<data_t>::apply_matrix_n(Container &data, size_t data_size,
   apply_lambda(0, data_size, threads, func, qubits, convert(mat));
 }
 
-template <typename data_t>
-template <typename Container>
-void Transformer<data_t>::apply_matrix_1(Container &data, size_t data_size,
+template <typename Container, typename data_t>
+void Transformer<Container, data_t>::apply_matrix_1(Container &data, size_t data_size,
                                          int threads, const uint_t qubit,
                                          const cvector_t<double> &mat) {
 
@@ -231,9 +226,8 @@ void Transformer<data_t>::apply_matrix_1(Container &data, size_t data_size,
   apply_lambda(0, data_size, threads, func, qubits, convert(mat));
 }
 
-template <typename data_t>
-template <typename Container>
-void Transformer<data_t>::apply_diagonal_matrix(Container &data,
+template <typename Container, typename data_t>
+void Transformer<Container, data_t>::apply_diagonal_matrix(Container &data,
                                                 size_t data_size, int threads,
                                                 const reg_t &qubits,
                                                 const cvector_t<double> &diag) {
@@ -259,9 +253,8 @@ void Transformer<data_t>::apply_diagonal_matrix(Container &data,
                convert(diag));
 }
 
-template <typename data_t>
-template <typename Container>
-void Transformer<data_t>::apply_diagonal_matrix_1(
+template <typename Container, typename data_t>
+void Transformer<Container, data_t>::apply_diagonal_matrix_1(
     Container &data, size_t data_size, int threads, const uint_t qubit,
     const cvector_t<double> &diag) {
   // TODO: This should be changed so it isn't checking doubles with ==
@@ -373,9 +366,6 @@ void Transformer<data_t>::apply_diagonal_matrix_1(
                  convert(diag));
   }
 }
-
-template class Transformer<double>;
-template class Transformer<float>;
 
 //------------------------------------------------------------------------------
 } // end namespace QV

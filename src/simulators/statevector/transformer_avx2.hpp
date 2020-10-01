@@ -22,9 +22,9 @@
 namespace AER {
 namespace QV {
 
-template <typename data_t = double>
-class TransformerAVX2 : public Transformer<data_t> {
-  using Base = Transformer<data_t>;
+template <typename Container, typename data_t = double>
+class TransformerAVX2 : public Transformer<Container, data_t> {
+  using Base = Transformer<Container, data_t>;
 
 public:
   //-----------------------------------------------------------------------
@@ -34,8 +34,7 @@ public:
   // Apply a N-qubit matrix to the state vector.
   // The matrix is input as vector of the column-major vectorized N-qubit
   // matrix.
-  template <typename Container>
-  static void apply_matrix(Container &data, size_t data_size, int threads,
+  void apply_matrix(Container &data, size_t data_size, int threads,
                            const reg_t &qubits, const cvector_t<double> &mat);
 };
 
@@ -49,9 +48,8 @@ public:
 // so it can compile, as this class won't be used
 #if defined(_MSC_VER) || defined(GNUC_AVX2)
 
-template <typename data_t>
-template <typename Container>
-void TransformerAVX2<data_t>::apply_matrix(Container &data, size_t data_size,
+template <typename Container, typename data_t>
+void TransformerAVX2<Container, data_t>::apply_matrix(Container &data, size_t data_size,
                                            int threads, const reg_t &qubits,
                                            const cvector_t<double> &mat) {
 
@@ -71,9 +69,6 @@ void TransformerAVX2<data_t>::apply_matrix(Container &data, size_t data_size,
 }
 
 #endif // AVX2 Code
-
-template class TransformerAVX2<double>;
-template class TransformerAVX2<float>;
 
 //------------------------------------------------------------------------------
 } // end namespace QV
