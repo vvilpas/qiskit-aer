@@ -372,7 +372,7 @@ class OperatorModel(BaseOperatorModel):
         #return self._frame_freq_helper.evaluate(time,
         #                                        sig_envelope_vals,
         #                                        in_frame_basis)
-        return self._frame.evaluate_operator_linear_combo(time,
+        return self._frame._evaluate_canonical_operator_combo(time,
                                                           sig_envelope_vals,
                                                           self._operators_in_frame_basis,
                                                           self._freq_array,
@@ -393,7 +393,7 @@ class OperatorModel(BaseOperatorModel):
         drift_env_vals = self.signals.drift_array
 
         #return self._frame_freq_helper.evaluate(0, drift_env_vals)
-        return self._frame.evaluate_operator_linear_combo(0.,
+        return self._frame._evaluate_canonical_operator_combo(0.,
                                                           drift_env_vals,
                                                           self._operators_in_frame_basis,
                                                           self._freq_array,
@@ -442,7 +442,7 @@ class OperatorModel(BaseOperatorModel):
 
 
         self._operators_in_frame_basis = self._frame.operators_into_frame_basis(self._operators)
-        self._freq_array, self._cutoff_array = self._frame._get_rotating_freq_and_cutoff_array(carrier_freqs, self.cutoff_freq)
+        self._freq_array, self._cutoff_array = self._frame._get_canonical_freq_arrays(carrier_freqs, self.cutoff_freq)
         #self._frame_freq_helper = FrameFreqHelper(self._operators,
         #                                          self._carrier_freqs,
         #                                          self.frame_operator,

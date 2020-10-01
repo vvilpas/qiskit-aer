@@ -256,9 +256,9 @@ class BaseFrame(ABC):
         return out
 
 
-    def _get_rotating_freq_and_cutoff_array(self,
-                                            carrier_freqs: np.array,
-                                            cutoff_freq: Optional[float] = None) -> Tuple[np.array, Union[None, np.array]]:
+    def _get_canonical_freq_arrays(self,
+                                   carrier_freqs: np.array,
+                                   cutoff_freq: Optional[float] = None) -> Tuple[np.array, Union[None, np.array]]:
         """Get frequency and cutoff arrays in basis in which F is diagonal.
         """
         # create difference matrix for diagonal elements
@@ -280,13 +280,13 @@ class BaseFrame(ABC):
 
         return freq_array, cutoff_array
 
-    def evaluate_operator_linear_combo(self,
-                                       t: float,
-                                       coefficients: np.array,
-                                       operators_in_frame_basis: np.array,
-                                       freq_array: np.array,
-                                       cutoff_array: Optional[np.array] = None,
-                                       in_frame_basis: Optional[bool] = False):
+    def _evaluate_canonical_operator_combo(self,
+                                           t: float,
+                                           coefficients: np.array,
+                                           operators_in_frame_basis: np.array,
+                                           freq_array: np.array,
+                                           cutoff_array: Optional[np.array] = None,
+                                           return_in_frame_basis: Optional[bool] = False):
         """Evaluate the "canonical" decomposition.
 
         Explain this!!
@@ -308,11 +308,10 @@ class BaseFrame(ABC):
         # sum the operators and subtract the frame operator
         op_in_frame_basis = np.sum(op_list, axis=0) - np.diag(self.frame_diag)
 
-        if in_frame_basis:
+        if return_in_frame_basis:
             return op_in_frame_basis
         else:
-            return (self.frame_basis @ op_in_frame_basis @
-                    self.frame_basis_adjoint)
+            return self.operator_out_of_frame_basis(op_in_frame_basis)
 
 class Frame(BaseFrame):
 
