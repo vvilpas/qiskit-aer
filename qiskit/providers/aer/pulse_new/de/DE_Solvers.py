@@ -30,13 +30,6 @@ class BMDE_Solver:
         """fill in
         """
 
-        # determine initial time
-        t0 = None
-        if bmde_problem.t0 is not None:
-            t0 = bmde_problem.t0
-        elif bmde_problem.interval is not None:
-            t0 = bmde_problem.interval[0]
-
         self._generator = bmde_problem._generator
 
         # setup solver method
@@ -53,7 +46,8 @@ class BMDE_Solver:
         elif issubclass(method, ODE_Method):
             Method = method
 
-        # set up method
+        # instantiate method object with minimal parameters
+        t0 = bmde_problem.t0
         self._method = Method(t0, y0=None, rhs=None, options=options)
 
         # flag signifying whether the user is themselves working in the frame
@@ -81,14 +75,14 @@ class BMDE_Solver:
 
     @property
     def y(self):
-        return self.get_y()
+        return self.get_y(return_in_frame=self._user_in_frame)
 
     @y.setter
     def y(self, new_y):
         if new_y is not None:
-            self.set_y(new_y)
+            self.set_y(new_y, y_in_frame=self._user_in_frame)
 
-    def set_y(self, y: np.ndarray, y_in_frame: Optional[bool] = None):
+    def set_y(self, y: np.ndarray, y_in_frame: Optional[bool] = False):
         """Set the state of the BMDE.
 
         State is internally represented in the frame of the internal generator,
@@ -113,12 +107,6 @@ class BMDE_Solver:
         else:
             new_y = self._state_type_converter.outer_to_inner(y)
 
-
-        # if frame of y is not specified, assume it's specified in
-        # the user frame
-        if y_in_frame is None:
-            y_in_frame = self._user_in_frame
-
         # convert y into the frame for the bmde, and also into the frame basis
         if y_in_frame:
             # if y is already in the frame, only need to convert into
@@ -135,7 +123,7 @@ class BMDE_Solver:
         self._method.y = new_y
 
 
-    def get_y(self, return_in_frame: Optional[bool] = None):
+    def get_y(self, return_in_frame: Optional[bool] = False):
         """Return the state of the BMDE.
 
         Needs to:
@@ -150,9 +138,6 @@ class BMDE_Solver:
         """
 
         return_y = self._method.y
-
-        if return_in_frame is None:
-            return_in_frame = self._user_in_frame
 
         if return_in_frame:
             # if the result is to be returned in frame, simply take the state out

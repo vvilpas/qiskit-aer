@@ -13,7 +13,7 @@
 # that they have been altered from the originals.
 
 import numpy as np
-from typing import Callable, Union, List, Optional
+from typing import Union, List, Optional
 
 from qiskit.quantum_info.operators import Operator
 from qiskit.providers.aer.pulse_new.models.operator_models import BaseOperatorModel
@@ -36,20 +36,22 @@ class BMDE_Problem:
         """fill in
         """
 
-        # set state parameters
-        self._state_type_converter = state_type_converter
+        # set state and time parameters
         self.y0 = y0
 
-        # set initial time or interval
         if (interval is not None) and (t0 is not None):
             raise Exception('Specify only one of t0 or interval.')
 
-        self.t0 = t0
         self.interval = interval
+        if interval is not None:
+            self.t0 = self.interval[0]
+        else:
+            self.t0 = t0
+
+        self._state_type_converter = state_type_converter
 
         # copy the generator
         self._generator = generator.copy()
-
 
         # set up frame
         if self._generator.frame_operator is not None:
@@ -72,7 +74,6 @@ class BMDE_Problem:
 
         if cutoff_freq is not None:
             self._generator.cutoff_freq = cutoff_freq
-
 
 
 def anti_herm_part(A: Union[np.ndarray, Operator]):
