@@ -281,20 +281,6 @@ class OperatorModel(BaseOperatorModel):
               diagonal matrix, and the array gives the diagonal elements.
         """
 
-        if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
-            # if 1d array check purely imaginary
-            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
-                raise Exception("""frame_operator must be an
-                                   anti-Hermitian matrix.""")
-        elif frame_operator is not None:
-            # otherwise, cast as Operator and verify anti-Hermitian
-            frame_operator = Operator(frame_operator)
-
-            herm_part = frame_operator + frame_operator.adjoint()
-            if herm_part != Operator(np.zeros(frame_operator.dim)):
-                raise Exception("""frame_operator must be an
-                                   anti-Hermitian matrix.""")
-
         self._frame_operator = frame_operator
         self._frame = None
         if frame_operator is None:

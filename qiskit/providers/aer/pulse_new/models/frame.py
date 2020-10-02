@@ -105,7 +105,7 @@ class BaseFrame(ABC):
                          y: np.array,
                          y_in_frame_basis: Optional[bool] = False,
                          return_in_frame_basis: Optional[bool] = False):
-        """Take a state into the frame, i.e. return exp(-Ft) @ y.
+        """Take a state into the frame, i.e. return exp(-tF) @ y.
 
         Args:
             t: time
@@ -136,7 +136,7 @@ class BaseFrame(ABC):
                            y: np.array,
                            y_in_frame_basis: Optional[bool] = False,
                            return_in_frame_basis: Optional[bool] = False):
-        """Take a state out of the frame, i.e. return exp(Ft) @ y.
+        """Take a state out of the frame, i.e. return exp(tF) @ y.
 
         Args:
             t: time
@@ -150,11 +150,11 @@ class BaseFrame(ABC):
                                      y_in_frame_basis,
                                      return_in_frame_basis)
 
-    def frame_conjugate_operator(self,
-                                 t: float,
-                                 operator: Union[Operator, np.array],
-                                 operator_in_frame_basis: Optional[bool] = False,
-                                 return_in_frame_basis: Optional[bool] = False):
+    def operator_into_frame(self,
+                            t: float,
+                            operator: Union[Operator, np.array],
+                            operator_in_frame_basis: Optional[bool] = False,
+                            return_in_frame_basis: Optional[bool] = False):
         """Return exp(-Ft) @ operator @ exp(Ft)
 
         Args:
@@ -165,31 +165,39 @@ class BaseFrame(ABC):
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
         """
-        out = to_array(operator)
+        return self._conjugate_and_add(t,
+                                       operator,
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
 
-        # if not in frame basis convert it
-        if not operator_in_frame_basis:
-            out = self.operator_into_frame_basis(out)
+    def operator_out_of_frame(self,
+                              t: float,
+                              operator: Union[Operator, np.array],
+                              operator_in_frame_basis: Optional[bool] = False,
+                              return_in_frame_basis: Optional[bool] = False):
+        """Return exp(-Ft) @ operator @ exp(Ft)
 
-        # go into the frame
-        trans_diag = np.exp(- t * self.frame_diag)
-        # assumption that F is anti-Hermitian implies conjugation of
-        # diagonal gives inversion
-        out = np.diag(trans_diag) @ out @ np.diag(trans_diag.conj())
+        Args:
+            t: time
+            y: state (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+        return self.operator_into_frame(-t,
+                                        operator,
+                                        operator_in_frame_basis=operator_in_frame_basis,
+                                        return_in_frame_basis=return_in_frame_basis)
 
-        # if output is requested to not be in the frame basis, convert it
-        if not return_in_frame_basis:
-            out = self.operator_out_of_frame_basis(out)
 
-        return out
-
-    def operator_into_frame(self,
-                            t: float,
-                            operator: Union[Operator, np.array],
-                            operator_in_frame_basis: Optional[bool] = False,
-                            return_in_frame_basis: Optional[bool] = False):
-        """Take an operator into the frame, i.e. return
-        exp(Ft) @ operator @ exp(-Ft) - F.
+    def generator_into_frame(self,
+                             t: float,
+                             operator: Union[Operator, np.array],
+                             operator_in_frame_basis: Optional[bool] = False,
+                             return_in_frame_basis: Optional[bool] = False):
+        """Take an generator into the frame, i.e. return
+        exp(-tF) @ operator @ exp(tF) - F.
 
         Args:
             t: time
@@ -200,32 +208,20 @@ class BaseFrame(ABC):
                                    in the frame basis
         """
 
-        out = to_array(operator)
+        # conjugate and subtract the frame diagonal
+        return self._conjugate_and_add(t,
+                                       operator,
+                                       op_to_add_in_fb=-np.diag(self.frame_diag),
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
 
-        # if not in frame basis convert it
-        if not operator_in_frame_basis:
-            out = self.operator_into_frame_basis(out)
-
-        # go into the frame
-        trans_diag = np.exp(- t * self.frame_diag)
-        # assumption that F is anti-Hermitian implies conjugation of
-        # diagonal gives inversion
-        out = np.diag(trans_diag) @ out @ np.diag(trans_diag.conj())
-        out = out - np.diag(self.frame_diag)
-
-        # if output is requested to not be in the frame basis, convert it
-        if not return_in_frame_basis:
-            out = self.operator_out_of_frame_basis(out)
-
-        return out
-
-    def operator_out_of_frame(self,
-                              t: float,
-                              operator: Union[Operator, np.array],
-                              operator_in_frame_basis: Optional[bool] = False,
-                              return_in_frame_basis: Optional[bool] = False):
+    def generator_out_of_frame(self,
+                               t: float,
+                               operator: Union[Operator, np.array],
+                               operator_in_frame_basis: Optional[bool] = False,
+                               return_in_frame_basis: Optional[bool] = False):
         """Take an operator out of the frame, i.e. return
-        exp(-Ft) @ operator @ exp(Ft) + F.
+        exp(tF) @ operator @ exp(-tF) + F.
 
         Args:
             t: time
@@ -234,6 +230,26 @@ class BaseFrame(ABC):
                               the basis in which the frame is diagonal
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
+        """
+
+        # conjugate and add the frame diagonal
+        return self._conjugate_and_add(-t,
+                                       operator,
+                                       op_to_add_in_fb=np.diag(self.frame_diag),
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
+
+    def _conjugate_and_add(self,
+                           t: float,
+                           operator: np.array,
+                           op_to_add_in_fb: Optional[np.array] = None,
+                           operator_in_frame_basis: Optional[bool] = False,
+                           return_in_frame_basis: Optional[bool] = False):
+        """General helper function for computing
+            exp(-tF)Gexp(tF) + B
+
+        Note: B is added in the frame basis before any potential final change
+        out of the frame basis.
         """
 
         out = to_array(operator)
@@ -247,7 +263,9 @@ class BaseFrame(ABC):
         # assumption that F is anti-Hermitian implies conjugation of
         # diagonal gives inversion
         out = np.diag(trans_diag) @ out @ np.diag(trans_diag.conj())
-        out = out + np.diag(self.frame_diag)
+
+        if op_to_add_in_fb is not None:
+            out = out + to_array(op_to_add_in_fb)
 
         # if output is requested to not be in the frame basis, convert it
         if not return_in_frame_basis:
@@ -320,6 +338,8 @@ class Frame(BaseFrame):
         # if None, set to a 1d array of zeros
         if frame_operator is None:
             raise Exception("""frame_operator cannot be None.""")
+
+        self._frame_operator = frame_operator
 
         # if frame_operator is a 1d array, assume already diagonalized
         if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
