@@ -18,22 +18,64 @@ from qiskit.quantum_info.operators import Operator
 
 class BaseFrame(ABC):
     """Abstract interface for functionality for entering a constant rotating
-    frame specified by an anti-Hermitian matrix F, and helper functions for
-    doing computations in a basis in which F is diagonal.
+    frame specified by an anti-Hermitian matrix F.
 
-    Assumption:
-        - F is anti-Hermitian
+    Frames have relevance within the context of differential equations of the
+    form :math:`\dot{y}(t) = G(t)y(t)`. "Entering a frame" given by :math:`F`
+    corresponds to a change of solution variable :math:`z(t) = e^{-tF}y(t)`.
+    Using the definition, we may write down a differential equation for
+    :math:`z(t)`:
+
+    .. math:
+        \dot{z}(t) = -F z(t) + e^{-tF}G(t)y(t) = (e^{-tF}G(t)e^{tF} - F)z(t)
+
+    In some cases it is computationally easier to solve for :math:`z(t)`
+    than it is to solve for :math:`y(t)`.
+
+    While entering a frame is mathematically well-defined for arbitrary
+    matrices :math:`F`, we assume in this class that :math:`F` is
+    anti-Hermitian, ensuring beneficial properties:
+        - :math:`F` is unitarily diagonalizable.
+        - :math:`e^{\pm tF}` is easily inverted by taking the adjoint.
+        - The frame transformation is norm preserving.
+    That :math:`F` is diagonalizable is especially important, as :math:`e^{tF}`
+    will need repeated evaluation for different :math:`t` (e.g. at every RHS
+    sample point when solving a DE), so it is useful to work in a basis in which
+    which :math:`F` is diagonal to minimize the cost of this.
+
+    Given an anti-Hermitian matrix :math:`F`, this class offers functions
+    for:
+        - Bringing a "state" into/out of the frame:
+          :math:`t, y \mapsto e^{\mp tF}y`
+        - Bringing an "operator" into/out of the frame:
+          :math:`t, A \mapsto e^{\mp tF}Ae^{\pm tF}`
+        - Bringing a generator for a BMDE into/out of the frame:
+          :math:`t, G \mapsto e^{\mp tF}Ge^{\pm tF} - F`
+
+    It also contains functions for bringing states/operators into/out of
+    the basis in which :math:`F` is diagonalized, which we refer to as the
+    "frame basis". All previously mentioned functions also include optional
+    arguments specifying whether the input/output are meant to be in the
+    frame basis. This is to facilitate use in solvers in which working
+    completely in the frame basis is beneficial to minimize costs associated
+    with evaluation of :math:`e^{tF}`.
+
+    Finally, this class offers support for evaluating linear combinations of
+    operators with coefficients with carrier frequencies, along with frequency
+    cutoffs for implementing the Rotating Wave Approximation (RWA). Frame
+    information and carrier frequency information are intrinsically tied
+    together in this context.
     """
 
     @property
     @abstractmethod
-    def frame_operator(self) -> np.array:
+    def frame_operator(self) -> Union[Operator, np.array]:
         """The original frame operator."""
 
     @property
     @abstractmethod
     def frame_diag(self) -> np.array:
-        """Diagonal of the frame operator."""
+        """Diagonal of the frame operator as a 1d array."""
 
     @property
     @abstractmethod
