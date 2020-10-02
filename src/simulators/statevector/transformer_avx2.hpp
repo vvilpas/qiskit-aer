@@ -35,7 +35,7 @@ public:
   // The matrix is input as vector of the column-major vectorized N-qubit
   // matrix.
   void apply_matrix(Container &data, size_t data_size, int threads,
-                           const reg_t &qubits, const cvector_t<double> &mat);
+                           const reg_t &qubits, const cvector_t<double> &mat) const override;
 };
 
 /*******************************************************************************
@@ -51,7 +51,7 @@ public:
 template <typename Container, typename data_t>
 void TransformerAVX2<Container, data_t>::apply_matrix(Container &data, size_t data_size,
                                            int threads, const reg_t &qubits,
-                                           const cvector_t<double> &mat) {
+                                           const cvector_t<double> &mat) const{
 
   if (qubits.size() == 1 &&
       ((mat[1] == 0.0 && mat[2] == 0.0) || (mat[0] == 0.0 && mat[3] == 0.0))) {

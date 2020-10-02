@@ -39,13 +39,13 @@ public:
   // matrix.
 
   virtual void apply_matrix(Container &data, size_t data_size, int threads,
-                           const reg_t &qubits, const cvector_t<double> &mat);
+                           const reg_t &qubits, const cvector_t<double> &mat) const;
 
   // Apply a N-qubit diagonal matrix to a array container
   // The matrix is input as vector of the matrix diagonal.
   virtual void apply_diagonal_matrix(Container &data, size_t data_size,
                                     int threads, const reg_t &qubits,
-                                    const cvector_t<double> &diag);
+                                    const cvector_t<double> &diag) const;
 
 protected:
   // Apply a N-qubit matrix to the state vector.
@@ -53,20 +53,20 @@ protected:
   // matrix.
   template <size_t N>
   void apply_matrix_n(Container &data, size_t data_size, int threads,
-                             const reg_t &qubits, const cvector_t<double> &mat);
+                             const reg_t &qubits, const cvector_t<double> &mat) const;
 
   // Specialized single qubit apply matrix function
   void apply_matrix_1(Container &data, size_t data_size, int threads,
-                             const uint_t qubit, const cvector_t<double> &mat);
+                             const uint_t qubit, const cvector_t<double> &mat) const;
 
   // Specialized single qubit apply matrix function
   void apply_diagonal_matrix_1(Container &data, size_t data_size,
                                       int threads, const uint_t qubit,
-                                      const cvector_t<double> &mat);
+                                      const cvector_t<double> &mat) const;
 
   // Convert a matrix to a different type
   // TODO: this makes an unnecessary copy when data_t = double.
-  cvector_t<data_t> convert(const cvector_t<double> &v);
+  cvector_t<data_t> convert(const cvector_t<double> &v) const;
 };
 
 /*******************************************************************************
@@ -76,7 +76,7 @@ protected:
  ******************************************************************************/
 
 template <typename Container, typename data_t>
-cvector_t<data_t> Transformer<Container, data_t>::convert(const cvector_t<double> &v) {
+cvector_t<data_t> Transformer<Container, data_t>::convert(const cvector_t<double> &v) const {
   cvector_t<data_t> ret(v.size());
   for (size_t i = 0; i < v.size(); ++i)
     ret[i] = v[i];
@@ -86,7 +86,7 @@ cvector_t<data_t> Transformer<Container, data_t>::convert(const cvector_t<double
 template <typename Container, typename data_t>
 void Transformer<Container, data_t>::apply_matrix(Container &data, size_t data_size,
                                        int threads, const reg_t &qubits,
-                                       const cvector_t<double> &mat) {
+                                       const cvector_t<double> &mat) const {
   // Static array optimized lambda functions
   switch (qubits.size()) {
     case 1:
@@ -140,7 +140,7 @@ template <typename Container, typename data_t>
 template <size_t N>
 void Transformer<Container, data_t>::apply_matrix_n(Container &data, size_t data_size,
                                          int threads, const reg_t &qs,
-                                         const cvector_t<double> &mat) {
+                                         const cvector_t<double> &mat) const {
   const size_t DIM = 1ULL << N;
   auto func = [&](const areg_t<1UL << N> &inds,
                   const cvector_t<data_t> &_mat) -> void {
@@ -163,7 +163,7 @@ void Transformer<Container, data_t>::apply_matrix_n(Container &data, size_t data
 template <typename Container, typename data_t>
 void Transformer<Container, data_t>::apply_matrix_1(Container &data, size_t data_size,
                                          int threads, const uint_t qubit,
-                                         const cvector_t<double> &mat) {
+                                         const cvector_t<double> &mat) const {
 
   // Check if matrix is diagonal and if so use optimized lambda
   if (mat[1] == 0.0 && mat[2] == 0.0) {
@@ -232,7 +232,7 @@ template <typename Container, typename data_t>
 void Transformer<Container, data_t>::apply_diagonal_matrix(Container &data,
                                                 size_t data_size, int threads,
                                                 const reg_t &qubits,
-                                                const cvector_t<double> &diag) {
+                                                const cvector_t<double> &diag) const {
   if (qubits.size() == 1) {
     apply_diagonal_matrix_1(data, data_size, threads, qubits[0], diag);
     return;
@@ -256,9 +256,9 @@ void Transformer<Container, data_t>::apply_diagonal_matrix(Container &data,
 }
 
 template <typename Container, typename data_t>
-void Transformer<Container, data_t>::apply_diagonal_matrix_1(
+void Transformer<Container, data_t>::apply_diagonal_matrix_1 (
     Container &data, size_t data_size, int threads, const uint_t qubit,
-    const cvector_t<double> &diag) {
+    const cvector_t<double> &diag) const {
   // TODO: This should be changed so it isn't checking doubles with ==
   if (diag[0] == 1.0) { // [[1, 0], [0, z]] matrix
     if (diag[1] == 1.0)
