@@ -65,6 +65,8 @@ class BaseFrame(ABC):
     cutoffs for implementing the Rotating Wave Approximation (RWA). Frame
     information and carrier frequency information are intrinsically tied
     together in this context.
+
+    ***This needs to be filled out/explained***
     """
 
     @property
@@ -314,6 +316,42 @@ class BaseFrame(ABC):
             out = self.operator_out_of_frame_basis(out)
 
         return out
+
+
+    def get_operators_in_frame_basis_with_cutoffs(self,
+                                            operators: Union[np.array, List[Operator]]),
+                                            carrier_freqs: Optional[np.array] = None,
+                                            cutoff_freq: Optional[float] = None):
+        """First attempt at cleaning up frequency and cutoff Handling
+        """
+
+        ops_in_frame_basis = self.operators_into_frame_basis(operators)
+
+        # Handle optional arguments
+        if carrier_freqs is None:
+            carrier_freqs = np.zeros(len(operators))
+
+        # create difference matrix for diagonal elements
+        dim = len(self.frame_diag)
+        D_diff = np.ones((dim, dim)) * self.frame_diag
+        D_diff = D_diff - D_diff.transpose()
+
+        # if no cutoff freq is specified, there isn't a difference between
+        # the two operator returns
+        if cutoff_freq is None:
+            return D_diff, ops_in_frame_basis, ops_in_frame_basis
+
+        # set up matrix encoding frequencies
+        im_angular_freqs = 1j * 2 * np.pi * carrier_freqs
+        freq_array = np.array([w + D_diff for w in im_angular_freqs])
+
+        cutoff_array = ((np.abs(freq_array.imag) / (2 * np.pi))
+                                < cutoff_freq).astype(int)
+
+        return (D_diff,
+                cutoff_array * ops_in_frame_basis,
+                cutoff_array.transpose(0, 2, 1)) * ops_in_frame_basis)
+
 
 
     def _get_canonical_freq_arrays(self,
