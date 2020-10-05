@@ -319,7 +319,7 @@ class BaseFrame(ABC):
 
 
     def get_operators_in_frame_basis_with_cutoffs(self,
-                                            operators: Union[np.array, List[Operator]]),
+                                            operators: Union[np.array, List[Operator]],
                                             carrier_freqs: Optional[np.array] = None,
                                             cutoff_freq: Optional[float] = None):
         """First attempt at cleaning up frequency and cutoff Handling
@@ -350,8 +350,29 @@ class BaseFrame(ABC):
 
         return (D_diff,
                 cutoff_array * ops_in_frame_basis,
-                cutoff_array.transpose(0, 2, 1)) * ops_in_frame_basis)
+                cutoff_array.transpose(0, 2, 1) * ops_in_frame_basis)
 
+    def _evaluate_stupid_thing(self,
+                               t,
+                               coeffs,
+                               D_diff,
+                               ops_1,
+                               ops_2,
+                               return_in_frame_basis=False):
+
+        frame_mat = np.exp(t * D_diff)
+
+        ops_1_in_frame = frame_mat * ops_1
+        ops_2_in_frame = frame_mat * ops_2
+
+        full_op = (0.5 * (np.tensordot(coeffs, ops_1_in_frame, axes=1)
+                         + np.tensordot(coeffs.conj(), ops_2_in_frame, axes=1))
+                         - np.diag(self.frame_diag))
+
+        if return_in_frame_basis:
+            return full_op
+        else:
+            return self.operator_out_of_frame_basis(full_op)
 
 
     def _get_canonical_freq_arrays(self,

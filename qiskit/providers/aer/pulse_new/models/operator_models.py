@@ -197,9 +197,16 @@ class OperatorModel(BaseOperatorModel):
         self._carrier_freqs = None
         self.signal_mapping = signal_mapping
 
-
+        # old arrays
         self._freq_array = None
         self._cutoff_array = None
+
+        # attempting new arrays
+        self._D_diff = None
+        self._ops_1 = None
+        self._ops_2 = None
+
+
         if signals is not None:
             # note: setting signals includes a call to _construct_frame_helper()
             self.signals = signals
@@ -318,6 +325,17 @@ class OperatorModel(BaseOperatorModel):
             raise Exception("""OperatorModel cannot be
                                evaluated without signals.""")
 
+        # new one
+
+        sig_vals = self.signals.value(time)
+        return self._frame._evaluate_stupid_thing(time,
+                                                  sig_vals,
+                                                  self._D_diff,
+                                                  self._ops_1,
+                                                  self._ops_2,
+                                                  in_frame_basis)
+
+        # old one
         sig_envelope_vals = self.signals.envelope_value(time)
 
         return self._frame._evaluate_canonical_operator_combo(time,
@@ -340,6 +358,14 @@ class OperatorModel(BaseOperatorModel):
 
         drift_env_vals = self.signals.drift_array
 
+        # new one
+        return self._frame._evaluate_stupid_thing(0.,
+                                                  drift_env_vals,
+                                                  self._D_diff,
+                                                  self._ops_1,
+                                                  self._ops_2)
+
+        # old one
         return self._frame._evaluate_canonical_operator_combo(0.,
                                                           drift_env_vals,
                                                           self._operators_in_frame_basis,
@@ -362,6 +388,9 @@ class OperatorModel(BaseOperatorModel):
         else:
             carrier_freqs = self.carrier_freqs
 
-
+        # old ones
         self._operators_in_frame_basis = self._frame.operators_into_frame_basis(self._operators)
         self._freq_array, self._cutoff_array = self._frame._get_canonical_freq_arrays(carrier_freqs, self.cutoff_freq)
+
+        # new ones
+        self._D_diff, self._ops_1, self._ops_2 = self._frame.get_operators_in_frame_basis_with_cutoffs(self._operators, carrier_freqs, self.cutoff_freq)
