@@ -197,15 +197,9 @@ class OperatorModel(BaseOperatorModel):
         self._carrier_freqs = None
         self.signal_mapping = signal_mapping
 
-        # old arrays
-        self._freq_array = None
-        self._cutoff_array = None
-
-        # attempting new arrays
-        self._D_diff = None
-        self._ops_1 = None
-        self._ops_2 = None
-
+        # initialize internal operator representation in the frame basis
+        self._ops_in_fb_with_cutoff = None
+        self._ops_in_fb_with_conj_cutoff = None
 
         if signals is not None:
             # note: setting signals includes a call to _construct_frame_helper()
@@ -269,7 +263,7 @@ class OperatorModel(BaseOperatorModel):
         """Set the internally stored carrier frequencies."""
         if any(carrier_freqs != self._carrier_freqs):
             self._carrier_freqs = carrier_freqs
-            self._construct_frame_helper()
+            self._construct_frame_basis_operators()
 
     @property
     def frame_operator(self) -> Union[Operator, np.array]:
@@ -294,7 +288,7 @@ class OperatorModel(BaseOperatorModel):
             self._frame = Frame(np.zeros(self._operators[0].dim[0]))
         else:
             self._frame = Frame(frame_operator)
-        self._construct_frame_helper()
+        self._construct_frame_basis_operators()
 
     @property
     def cutoff_freq(self) -> float:
@@ -306,7 +300,7 @@ class OperatorModel(BaseOperatorModel):
         """Set the cutoff frequency."""
         if cutoff_freq != self._cutoff_freq:
             self._cutoff_freq = cutoff_freq
-            self._construct_frame_helper()
+            self._construct_frame_basis_operators()
 
     def evaluate(self, time: float, in_frame_basis: bool = False) -> np.array:
         """
@@ -325,24 +319,11 @@ class OperatorModel(BaseOperatorModel):
             raise Exception("""OperatorModel cannot be
                                evaluated without signals.""")
 
-        # new one
-
         sig_vals = self.signals.value(time)
-        return self._frame._evaluate_stupid_thing(time,
-                                                  sig_vals,
-                                                  self._D_diff,
-                                                  self._ops_1,
-                                                  self._ops_2,
-                                                  in_frame_basis)
-
-        # old one
-        sig_envelope_vals = self.signals.envelope_value(time)
-
-        return self._frame._evaluate_canonical_operator_combo(time,
-                                                          sig_envelope_vals,
-                                                          self._operators_in_frame_basis,
-                                                          self._freq_array,
-                                                          self._cutoff_array,
+        return self._frame.evaluate_generator_with_cutoff(time,
+                                                          sig_vals,
+                                                          self._ops_in_fb_with_cutoff,
+                                                          self._ops_in_fb_with_conj_cutoff,
                                                           in_frame_basis)
 
     @property
@@ -358,19 +339,10 @@ class OperatorModel(BaseOperatorModel):
 
         drift_env_vals = self.signals.drift_array
 
-        # new one
-        return self._frame._evaluate_stupid_thing(0.,
-                                                  drift_env_vals,
-                                                  self._D_diff,
-                                                  self._ops_1,
-                                                  self._ops_2)
-
-        # old one
-        return self._frame._evaluate_canonical_operator_combo(0.,
+        return self._frame.evaluate_generator_with_cutoff(0.,
                                                           drift_env_vals,
-                                                          self._operators_in_frame_basis,
-                                                          self._freq_array,
-                                                          self._cutoff_array)
+                                                          self._ops_in_fb_with_cutoff,
+                                                          self._ops_in_fb_with_conj_cutoff)
 
     def evaluate_decomposition(self, t: float) -> np.array:
         raise Exception("Not implemented.")
@@ -378,7 +350,7 @@ class OperatorModel(BaseOperatorModel):
     def copy(self):
         return deepcopy(self)
 
-    def _construct_frame_helper(self):
+    def _construct_frame_basis_operators(self):
         """Helper function for constructing frame helper from relevant
         attributes.
         """
@@ -388,9 +360,4 @@ class OperatorModel(BaseOperatorModel):
         else:
             carrier_freqs = self.carrier_freqs
 
-        # old ones
-        self._operators_in_frame_basis = self._frame.operators_into_frame_basis(self._operators)
-        self._freq_array, self._cutoff_array = self._frame._get_canonical_freq_arrays(carrier_freqs, self.cutoff_freq)
-
-        # new ones
-        self._D_diff, self._ops_1, self._ops_2 = self._frame.get_operators_in_frame_basis_with_cutoffs(self._operators, carrier_freqs, self.cutoff_freq)
+        self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = self._frame.operators_into_frame_basis_with_cutoff(self._operators, self.cutoff_freq, carrier_freqs)

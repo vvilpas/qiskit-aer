@@ -71,6 +71,11 @@ class BaseFrame(ABC):
 
     @property
     @abstractmethod
+    def dim(self) -> int:
+        """Dimension of frame operator."""
+
+    @property
+    @abstractmethod
     def frame_operator(self) -> Union[Operator, np.array]:
         """The original frame operator."""
 
@@ -302,11 +307,12 @@ class BaseFrame(ABC):
         if not operator_in_frame_basis:
             out = self.operator_into_frame_basis(out)
 
-        # go into the frame
-        trans_diag = np.exp(t * self.frame_diag)
+        # get frame transformation matrix in diagonal basis
         # assumption that F is anti-Hermitian implies conjugation of
         # diagonal gives inversion
-        out = np.diag(trans_diag) @ out @ np.diag(trans_diag.conj())
+        frame_mat = np.ones((self.dim, self.dim)) * np.exp(t * self.frame_diag)
+        frame_mat = frame_mat * (frame_mat.transpose().conj())
+        out = frame_mat * out
 
         if op_to_add_in_fb is not None:
             out = out + to_array(op_to_add_in_fb)
@@ -317,17 +323,34 @@ class BaseFrame(ABC):
 
         return out
 
+    def operators_into_frame_basis_with_cutoff(self,
+                                               operators: Union[np.array, List[Operator]],
+                                               cutoff_freq: Optional[float] = None,
+                                               carrier_freqs: Optional[np.array] = None):
+        """Transform operators into the frame basis, and set operator entries
+        with frequencies above the cutoff to 0.
 
-    def get_operators_in_frame_basis_with_cutoffs(self,
-                                            operators: Union[np.array, List[Operator]],
-                                            carrier_freqs: Optional[np.array] = None,
-                                            cutoff_freq: Optional[float] = None):
-        """First attempt at cleaning up frequency and cutoff Handling
+        This function is meant to be used in conjunction with
+        evaluate_generator_with_cutoff
+
+        ****Should put a mathematical description here***
+
+        Args:
+            operators: list of operators
+            cutoff_freq: cutoff frequency
+            carrier_freqs: list of carrier frequencies
+
+        Returns:
+            Tuple[np.array, np.array]:
         """
 
         ops_in_frame_basis = self.operators_into_frame_basis(operators)
 
-        # Handle optional arguments
+        # if no cutoff freq is specified, the two arrays are the same
+        if cutoff_freq is None:
+            return ops_in_frame_basis, ops_in_frame_basis
+
+        # if no carrier frequencies set, set to 0
         if carrier_freqs is None:
             carrier_freqs = np.zeros(len(operators))
 
@@ -336,11 +359,6 @@ class BaseFrame(ABC):
         D_diff = np.ones((dim, dim)) * self.frame_diag
         D_diff = D_diff - D_diff.transpose()
 
-        # if no cutoff freq is specified, there isn't a difference between
-        # the two operator returns
-        if cutoff_freq is None:
-            return D_diff, ops_in_frame_basis, ops_in_frame_basis
-
         # set up matrix encoding frequencies
         im_angular_freqs = 1j * 2 * np.pi * carrier_freqs
         freq_array = np.array([w + D_diff for w in im_angular_freqs])
@@ -348,31 +366,56 @@ class BaseFrame(ABC):
         cutoff_array = ((np.abs(freq_array.imag) / (2 * np.pi))
                                 < cutoff_freq).astype(int)
 
-        return (D_diff,
-                cutoff_array * ops_in_frame_basis,
+        return (cutoff_array * ops_in_frame_basis,
                 cutoff_array.transpose(0, 2, 1) * ops_in_frame_basis)
 
-    def _evaluate_stupid_thing(self,
-                               t,
-                               coeffs,
-                               D_diff,
-                               ops_1,
-                               ops_2,
-                               return_in_frame_basis=False):
+    def evaluate_generator_with_cutoff(self,
+                                       t: float,
+                                       coeffs: np.array,
+                                       ops_in_fb_with_cutoff: np.array,
+                                       ops_in_fb_with_conj_cutoff: np.array,
+                                       return_in_frame_basis: Optional[bool] = False):
+        """Evaluate the generator at a given time with a list of coefficients,
+        and with a given frequency cutoff.
 
-        frame_mat = np.exp(t * D_diff)
+        To be used in conjunction with the output of
+        operators_into_frame_basis_with_cutoff
 
-        ops_1_in_frame = frame_mat * ops_1
-        ops_2_in_frame = frame_mat * ops_2
+        **** Give mathematical description of this ****
 
-        full_op = (0.5 * (np.tensordot(coeffs, ops_1_in_frame, axes=1)
-                         + np.tensordot(coeffs.conj(), ops_2_in_frame, axes=1))
-                         - np.diag(self.frame_diag))
+        Args:
+            t: time
+            coeffs: Complex valued coefficients
+            ops_in_fb_with_cutoff: operators in frame basis with cutoffs
+            ops_in_fb_with_conj_cutoff: operators in frame basis with conjugate
+                                        cutoffs
+            return_in_frame_basis: whether to return the result in the frame
+                                   basis
+
+        Returns:
+            generator operator in frame with cutoffs
+        """
+
+        # construct the linear combination of operators with coefficients and
+        # conjugate coefficients, subtracting the frame operator
+        op_combo = (0.5 * (
+                           np.tensordot(coeffs, ops_in_fb_with_cutoff, axes=1)
+                           + np.tensordot(coeffs.conj(),
+                                          ops_in_fb_with_conj_cutoff,
+                                          axes=1)
+                           )
+                    - np.diag(self.frame_diag))
+
+
+        # Apply the frame transformation as an entrywise product
+        exp_freq = np.exp(t * self.frame_diag)
+        frame_mat = np.outer(exp_freq.conj(), exp_freq)
+        full_op_in_frame = frame_mat * op_combo
 
         if return_in_frame_basis:
-            return full_op
+            return full_op_in_frame
         else:
-            return self.operator_out_of_frame_basis(full_op)
+            return self.operator_out_of_frame_basis(full_op_in_frame)
 
 
     def _get_canonical_freq_arrays(self,
@@ -470,6 +513,12 @@ class Frame(BaseFrame):
             self._frame_diag = -1j * frame_diag
             self._frame_basis = frame_basis
             self._frame_basis_adjoint = frame_basis.conj().transpose()
+
+        self._dim = len(self._frame_diag)
+
+    @property
+    def dim(self) -> int:
+        return self._dim
 
     @property
     def frame_operator(self) -> np.array:
