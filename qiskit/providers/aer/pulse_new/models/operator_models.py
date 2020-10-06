@@ -360,4 +360,7 @@ class OperatorModel(BaseOperatorModel):
         else:
             carrier_freqs = self.carrier_freqs
 
-        self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = self._frame.operators_into_frame_basis_with_cutoff(self._operators, self.cutoff_freq, carrier_freqs)
+        self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = (
+         self._frame.operators_into_frame_basis_with_cutoff(self._operators,
+                                                            self.cutoff_freq,
+                                                            carrier_freqs))
