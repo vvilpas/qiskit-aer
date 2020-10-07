@@ -183,19 +183,15 @@ class OperatorModel(BaseOperatorModel):
         self._signals = None
         self._carrier_freqs = None
         self.signal_mapping = signal_mapping
+        self.signals = signals
 
-        # initialize internal operator representation in the frame basis
-        self._ops_in_fb_with_cutoff = None
-        self._ops_in_fb_with_conj_cutoff = None
-
+        # initialize flag that frame is None to True, then set frame
         self._frame_is_None = True
         self.frame = frame
 
-        if signals is not None:
-            # note: setting signals includes a call to _construct_frame_helper()
-            self.signals = signals
-        else:
-            self._construct_frame_helper()
+        # initialize internal operator representation in the frame basis
+        self.__ops_in_fb_w_cutoff = None
+        self.__ops_in_fb_w_conj_cutoff = None
 
     @property
     def signals(self) -> VectorSignal:
@@ -253,7 +249,7 @@ class OperatorModel(BaseOperatorModel):
         """Set the internally stored carrier frequencies."""
         if any(carrier_freqs != self._carrier_freqs):
             self._carrier_freqs = carrier_freqs
-            self._construct_frame_basis_operators()
+            self._reset_internal_ops()
 
     @property
     def frame(self) -> Frame:
@@ -283,7 +279,7 @@ class OperatorModel(BaseOperatorModel):
 
             self._frame_is_None = False
 
-        self._construct_frame_basis_operators()
+        self._reset_internal_ops()
 
     @property
     def cutoff_freq(self) -> float:
@@ -295,7 +291,7 @@ class OperatorModel(BaseOperatorModel):
         """Set the cutoff frequency."""
         if cutoff_freq != self._cutoff_freq:
             self._cutoff_freq = cutoff_freq
-            self._construct_frame_basis_operators()
+            self._reset_internal_ops()
 
     def evaluate(self, time: float, in_frame_basis: bool = False) -> np.array:
         """
@@ -337,16 +333,34 @@ class OperatorModel(BaseOperatorModel):
 
         return self._evaluate_linear_combo(drift_sig_vals)
 
-    def _evaluate_linear_combo(self, coeffs):
-        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_with_cutoff, axes=1)
-                      + np.tensordot(coeffs.conj(),
-                                     self._ops_in_fb_with_conj_cutoff,
-                                     axes=1))
-
     def copy(self):
         return deepcopy(self)
 
-    def _construct_frame_basis_operators(self):
+    def _evaluate_linear_combo(self, coeffs):
+        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_w_cutoff, axes=1)
+                      + np.tensordot(coeffs.conj(),
+                                     self._ops_in_fb_w_conj_cutoff,
+                                     axes=1))
+
+    @property
+    def _ops_in_fb_w_cutoff(self):
+        if self.__ops_in_fb_w_cutoff is None:
+            self._construct_ops_in_fb_w_cutoff()
+
+        return self.__ops_in_fb_w_cutoff
+
+    @property
+    def _ops_in_fb_w_conj_cutoff(self):
+        if self.__ops_in_fb_w_conj_cutoff is None:
+            self._construct_ops_in_fb_w_cutoff()
+
+        return self.__ops_in_fb_w_conj_cutoff
+
+    def _reset_internal_ops(self):
+        self.__ops_in_fb_w_cutoff = None
+        self.__ops_in_fb_w_conj_cutoff = None
+
+    def _construct_ops_in_fb_w_cutoff(self):
         """Helper function for constructing frame helper from relevant
         attributes.
         """
@@ -356,7 +370,7 @@ class OperatorModel(BaseOperatorModel):
         else:
             carrier_freqs = self.carrier_freqs
 
-        self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = (
+        self.__ops_in_fb_w_cutoff, self.__ops_in_fb_w_conj_cutoff = (
             self.frame.operators_into_frame_basis_with_cutoff(self._operators,
                                                               self.cutoff_freq,
                                                               carrier_freqs))
