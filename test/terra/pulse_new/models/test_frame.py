@@ -46,6 +46,55 @@ class TestFrame(unittest.TestCase):
         except Exception as e:
             self.assertTrue('anti-Hermitian' in str(e))
 
+    def test_state_into_frame_basis(self):
+        """Test state_into_frame_basis."""
+
+        rng = np.random.default_rng(10933)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+        frame = Frame(frame_op)
+
+        _, U = np.linalg.eigh(1j * frame_op)
+
+        t = 1312.132
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        val = frame.state_into_frame_basis(y0)
+        expected = U.conj().transpose() @ y0
+        self.assertAlmostEqual(val, expected)
+
+        val = frame.state_out_of_frame_basis(y0)
+        expected = U @ y0
+        self.assertAlmostEqual(val, expected)
+
+    def test_operator_into_frame_basis(self):
+        """Test state_into_frame_basis."""
+
+        rng = np.random.default_rng(98747)
+        rand_op = (rng.uniform(low=-10, high=10, size=(10,10)) +
+                   1j*rng.uniform(low=-10, high=10, size=(10,10)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+        frame = Frame(frame_op)
+
+        _, U = np.linalg.eigh(1j * frame_op)
+        Uadj = U.conj().transpose()
+
+        t = 1312.132
+        y0 = (rng.uniform(low=-10, high=10, size=(10,10)) +
+              1j*rng.uniform(low=-10, high=10, size=(10,10)))
+
+        val = frame.operator_into_frame_basis(y0)
+        expected = U.conj().transpose() @ y0 @ U
+        self.assertAlmostEqual(val, expected)
+
+        val = frame.operator_out_of_frame_basis(y0)
+        expected = U @ y0 @ Uadj
+        self.assertAlmostEqual(val, expected)
+
     def test_state_transformations_no_frame(self):
         """Test frame transformations with no frame."""
 
@@ -65,82 +114,299 @@ class TestFrame(unittest.TestCase):
         out = frame.state_out_of_frame(t, y)
         self.assertAlmostEqual(out, y)
 
-    def test_state_into_frame(self):
+    def test_state_into_frame_2_level(self):
         """Test state_into_frame with a non-trival frame."""
         frame_op = -1j * np.pi * (self.X + 0.1 * self.Y + 12. * self.Z).data
-        frame = Frame(frame_op)
-
-        evals, U = np.linalg.eigh(1j * frame_op)
-        evals = -1j * evals
-        Uadj = U.conj().transpose()
-
         t = 1312.132
         y0 = np.array([[1., 2.], [3., 4.]])
 
-        # compute frame rotation to enter frame
-        emFt = expm(-frame_op * t)
+        self._test_state_into_frame(t, frame_op, y0)
+        self._test_state_into_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_state_into_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_state_into_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                     return_in_frame_basis=True)
 
-        # test without optional parameters
-        value = frame.state_into_frame(t, y0)
-        expected = emFt @ y0
-        # these tests need reduced absolute tolerance due to the time value
+    def test_state_into_frame_pseudo_random(self):
+        """Test state_into_frame with pseudo-random matrices."""
+        rng = np.random.default_rng(30493)
+        rand_op = (rng.uniform(low=-10, high=10, size=(5,5)) +
+                   1j*rng.uniform(low=-10, high=10, size=(5,5)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = 1312.132
+        y0 = (rng.uniform(low=-10, high=10, size=(5,5)) +
+              1j*rng.uniform(low=-10, high=10, size=(5,5)))
+
+        self._test_state_into_frame(t, frame_op, y0)
+        self._test_state_into_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_state_into_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_state_into_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                     return_in_frame_basis=True)
+
+    def _test_state_into_frame(self,
+                               t,
+                               frame_op,
+                               y,
+                               y_in_frame_basis=False,
+                               return_in_frame_basis=False):
+
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+
+        frame = Frame(frame_op)
+
+        value = frame.state_into_frame(t, y,
+                                       y_in_frame_basis,
+                                       return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = U.conj().transpose() @ expected
+
+        expected = np.diag(np.exp(-t * evals)) @ expected
+
+        if not return_in_frame_basis:
+            expected = U @ expected
+
         self.assertAlmostEqual(value, expected, tol=1e-10)
 
-        # test with y0 assumed in frame basis
-        value = frame.state_into_frame(t, y0, y_in_frame_basis=True)
-        expected = emFt @ U @ y0
-        self.assertAlmostEqual(value, expected, tol=1e-10)
-
-        # test with output request in frame basis
-        value = frame.state_into_frame(t, y0, return_in_frame_basis=True)
-        expected = Uadj @ emFt @ y0
-        self.assertAlmostEqual(value, expected, tol=1e-10)
-
-        # test with both input and output in frame basis
-        value = frame.state_into_frame(t, y0,
-                                          y_in_frame_basis=True,
-                                          return_in_frame_basis=True)
-        expected = Uadj @ emFt @ U @ y0
-        self.assertAlmostEqual(value, expected, tol=1e-10)
-
-    def test_state_out_of_frame(self):
+    def test_state_out_of_frame_2_level(self):
         """Test state_out_of_frame with a non-trival frame."""
         frame_op = -1j * np.pi * (3.1 * self.X + 1.1 * self.Y +
                                   12. * self.Z).data
+        t = 122.132
+        y0 = np.array([[1., 2.], [3., 4.]])
+        self._test_state_out_of_frame(t, frame_op, y0)
+        self._test_state_out_of_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_state_out_of_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_state_out_of_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                     return_in_frame_basis=True)
+
+    def test_state_out_of_frame_pseudo_random(self):
+        """Test state_out_of_frame with pseudo-random matrices."""
+        rng = np.random.default_rng(1382)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = rng.uniform(low=-100, high=100)
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        self._test_state_out_of_frame(t, frame_op, y0)
+        self._test_state_out_of_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_state_out_of_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_state_out_of_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                     return_in_frame_basis=True)
+
+    def _test_state_out_of_frame(self,
+                                 t,
+                                 frame_op,
+                                 y,
+                                 y_in_frame_basis=False,
+                                 return_in_frame_basis=False):
+
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+
         frame = Frame(frame_op)
+
+        value = frame.state_out_of_frame(t, y,
+                                         y_in_frame_basis,
+                                         return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = U.conj().transpose() @ expected
+
+        expected = np.diag(np.exp(t * evals)) @ expected
+
+        if not return_in_frame_basis:
+            expected = U @ expected
+
+        self.assertAlmostEqual(value, expected, tol=1e-10)
+
+    def test_operator_into_frame(self):
+        """Test operator_into_frame."""
+        rng = np.random.default_rng(94994)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = rng.uniform(low=-100, high=100)
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        self._test_operator_into_frame(t, frame_op, y0)
+        self._test_operator_into_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_operator_into_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_operator_into_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                     return_in_frame_basis=True)
+
+
+    def _test_operator_into_frame(self,
+                                  t,
+                                  frame_op,
+                                  y,
+                                  y_in_frame_basis=False,
+                                  return_in_frame_basis=False):
 
         evals, U = np.linalg.eigh(1j * frame_op)
         evals = -1j * evals
         Uadj = U.conj().transpose()
 
-        t = 122.132
-        y0 = np.array([[1., 2.], [3., 4.]])
+        frame = Frame(frame_op)
 
-        # compute frame rotation to exit frame
-        epFt = expm(frame_op * t)
+        value = frame.operator_into_frame(t, y,
+                                          y_in_frame_basis,
+                                          return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = Uadj @ expected @ U
 
-        # test without optional parameters
-        value = frame.state_out_of_frame(t, y0)
-        expected = epFt @ y0
-        # these tests need reduced absolute tolerance due to the time value
+        expected = np.diag(np.exp(-t * evals)) @ expected @ np.diag(np.exp(t * evals))
+
+        if not return_in_frame_basis:
+            expected = U @ expected @ Uadj
+
         self.assertAlmostEqual(value, expected, tol=1e-10)
 
-        # test with y0 assumed in frame basis
-        value = frame.state_out_of_frame(t, y0, y_in_frame_basis=True)
-        expected = epFt @ U @ y0
+    def test_operator_into_frame(self):
+        """Test operator_out_of_frame."""
+        rng = np.random.default_rng(37164093)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = rng.uniform(low=-100, high=100)
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        self._test_operator_out_of_frame(t, frame_op, y0)
+        self._test_operator_out_of_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_operator_out_of_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_operator_out_of_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                         return_in_frame_basis=True)
+
+    def _test_operator_out_of_frame(self,
+                                    t,
+                                    frame_op,
+                                    y,
+                                    y_in_frame_basis=False,
+                                    return_in_frame_basis=False):
+
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+        Uadj = U.conj().transpose()
+
+        frame = Frame(frame_op)
+
+        value = frame.operator_out_of_frame(t, y,
+                                            y_in_frame_basis,
+                                            return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = Uadj @ expected @ U
+
+        expected = np.diag(np.exp(t * evals)) @ expected @ np.diag(np.exp(-t * evals))
+
+        if not return_in_frame_basis:
+            expected = U @ expected @ Uadj
+
         self.assertAlmostEqual(value, expected, tol=1e-10)
 
-        # test with output request in frame basis
-        value = frame.state_out_of_frame(t, y0, return_in_frame_basis=True)
-        expected = Uadj @ epFt @ y0
+    def test_generator_into_frame(self):
+        """Test operator_out_of_frame."""
+        rng = np.random.default_rng(111)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = rng.uniform(low=-100, high=100)
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        self._test_generator_into_frame(t, frame_op, y0)
+        self._test_generator_into_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_generator_into_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_generator_into_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                         return_in_frame_basis=True)
+
+    def _test_generator_into_frame(self,
+                                   t,
+                                   frame_op,
+                                   y,
+                                   y_in_frame_basis=False,
+                                   return_in_frame_basis=False):
+        """Helper function for testing generator_into_frame."""
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+        Uadj = U.conj().transpose()
+
+        frame = Frame(frame_op)
+
+        value = frame.generator_into_frame(t, y,
+                                            y_in_frame_basis,
+                                            return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = Uadj @ expected @ U
+
+        expected = np.diag(np.exp(-t * evals)) @ expected @ np.diag(np.exp(t * evals))
+        expected = expected - np.diag(evals)
+
+        if not return_in_frame_basis:
+            expected = U @ expected @ Uadj
+
         self.assertAlmostEqual(value, expected, tol=1e-10)
 
-        # test with both input and output in frame basis
-        value = frame.state_out_of_frame(t,
-                                         y0,
-                                         y_in_frame_basis=True,
-                                         return_in_frame_basis=True)
-        expected = Uadj @ epFt @ U @ y0
+    def test_generator_out_of_frame(self):
+        """Test operator_out_of_frame."""
+        rng = np.random.default_rng(111)
+        rand_op = (rng.uniform(low=-10, high=10, size=(6,6)) +
+                   1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        frame_op = rand_op - rand_op.conj().transpose()
+
+        t = rng.uniform(low=-100, high=100)
+        y0 = (rng.uniform(low=-10, high=10, size=(6,6)) +
+              1j*rng.uniform(low=-10, high=10, size=(6,6)))
+
+        self._test_generator_out_of_frame(t, frame_op, y0)
+        self._test_generator_out_of_frame(t, frame_op, y0, y_in_frame_basis=True)
+        self._test_generator_out_of_frame(t, frame_op, y0, return_in_frame_basis=True)
+        self._test_generator_out_of_frame(t, frame_op, y0, y_in_frame_basis=True,
+                                                         return_in_frame_basis=True)
+
+    def _test_generator_out_of_frame(self,
+                                     t,
+                                     frame_op,
+                                     y,
+                                     y_in_frame_basis=False,
+                                     return_in_frame_basis=False):
+        """Helper function for testing generator_into_frame."""
+        evals, U = np.linalg.eigh(1j * frame_op)
+        evals = -1j * evals
+        Uadj = U.conj().transpose()
+
+        frame = Frame(frame_op)
+
+        value = frame.generator_out_of_frame(t, y,
+                                            y_in_frame_basis,
+                                            return_in_frame_basis)
+        expected = y
+        if not y_in_frame_basis:
+            expected = Uadj @ expected @ U
+
+        expected = np.diag(np.exp(t * evals)) @ expected @ np.diag(np.exp(-t * evals))
+        expected = expected + np.diag(evals)
+
+        if not return_in_frame_basis:
+            expected = U @ expected @ Uadj
+
         self.assertAlmostEqual(value, expected, tol=1e-10)
 
     def test_operators_into_frame_basis_with_cutoff_no_cutoff(self):

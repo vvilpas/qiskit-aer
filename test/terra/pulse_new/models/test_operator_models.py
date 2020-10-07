@@ -43,19 +43,19 @@ class TestOperatorModel(unittest.TestCase):
 
         # 1d array
         try:
-            self.basic_model.frame_operator = np.array([1., 1.])
+            self.basic_model.frame = np.array([1., 1.])
         except Exception as e:
             self.assertTrue('anti-Hermitian' in str(e))
 
         # 2d array
         try:
-            self.basic_model.frame_operator = np.array([[1., 0.], [0., 1.]])
+            self.basic_model.frame = np.array([[1., 0.], [0., 1.]])
         except Exception as e:
             self.assertTrue('anti-Hermitian' in str(e))
 
         # Operator
         try:
-            self.basic_model.frame_operator = self.Z
+            self.basic_model.frame = self.Z
         except Exception as e:
             self.assertTrue('anti-Hermitian' in str(e))
 
@@ -75,7 +75,7 @@ class TestOperatorModel(unittest.TestCase):
     def _frame_operator_test(self, frame_operator, t):
         """Routine for testing setting of valid frame operators."""
 
-        self.basic_model.frame_operator = frame_operator
+        self.basic_model.frame = frame_operator
 
         # convert to 2d array
         if isinstance(frame_operator, Operator):
@@ -117,7 +117,7 @@ class TestOperatorModel(unittest.TestCase):
         frame_op = -1j * (self.X + 0.2 * self.Y + 0.1 * self.Z).data
 
         # enter the frame given by the -1j * X
-        self.basic_model.frame_operator = frame_op
+        self.basic_model.frame = frame_op
 
         # get the frame basis that is used in model
         _, U = np.linalg.eigh(1j * frame_op)
@@ -217,7 +217,7 @@ class TestOperatorModel(unittest.TestCase):
 
     def test_drift_error_in_frame(self):
         """Test raising of error if drift is requested in a frame."""
-        self.basic_model.frame_operator = self.basic_model.drift
+        self.basic_model.frame = self.basic_model.drift
 
         try:
             self.basic_model.drift
@@ -228,7 +228,7 @@ class TestOperatorModel(unittest.TestCase):
         """Test evaluation with a cutoff frequency."""
 
         # enter frame of drift
-        self.basic_model.frame_operator = self.basic_model.drift
+        self.basic_model.frame = self.basic_model.drift
 
         # set cutoff freq to 2 * drive freq (standard RWA)
         self.basic_model.cutoff_freq = 2 * self.w

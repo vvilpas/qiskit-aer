@@ -195,7 +195,7 @@ class BaseFrame(ABC):
         """Generalized helper function for taking operators and generators
         into/out of the frame.
 
-        Given operator G, and op_to_add_in_fb, returns exp(-tF)Gexp(tF) + B,
+        Given operator G, and op_to_add_in_fb B, returns exp(-tF)Gexp(tF) + B,
         where B is assumed to be specified in the frame basis.
 
         Args:
@@ -305,6 +305,25 @@ class BaseFrame(ABC):
                                        op_to_add_in_fb=np.diag(self.frame_diag),
                                        operator_in_frame_basis=operator_in_frame_basis,
                                        return_in_frame_basis=return_in_frame_basis)
+
+    @abstractmethod
+    def operators_into_frame_basis_with_cutoff(self,
+                                               operators: Union[np.array, List[Operator]],
+                                               cutoff_freq: Optional[float] = None,
+                                               carrier_freqs: Optional[np.array] = None):
+        """Transform operators into the frame basis, and set operator entries
+        with frequencies above the cutoff to 0.
+
+        ****Should put a mathematical description here***
+
+        Args:
+            operators: list of operators
+            cutoff_freq: cutoff frequency
+            carrier_freqs: list of carrier frequencies
+
+        Returns:
+            Tuple[np.array, np.array]:
+        """
 
 
 class Frame(BaseFrame):
@@ -458,121 +477,13 @@ class Frame(BaseFrame):
 
         return out
 
-    def state_out_of_frame(self,
-                           t: float,
-                           y: np.array,
-                           y_in_frame_basis: Optional[bool] = False,
-                           return_in_frame_basis: Optional[bool] = False):
-        """Take a state out of the frame, i.e. return exp(tF) @ y.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        return self.state_into_frame(-t, y,
-                                     y_in_frame_basis,
-                                     return_in_frame_basis)
-
-    def operator_into_frame(self,
-                            t: float,
-                            operator: Union[Operator, np.array],
-                            operator_in_frame_basis: Optional[bool] = False,
-                            return_in_frame_basis: Optional[bool] = False):
-        """Return exp(-Ft) @ operator @ exp(Ft)
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        return self._conjugate_and_add(t,
-                                       operator,
-                                       operator_in_frame_basis=operator_in_frame_basis,
-                                       return_in_frame_basis=return_in_frame_basis)
-
-    def operator_out_of_frame(self,
-                              t: float,
-                              operator: Union[Operator, np.array],
-                              operator_in_frame_basis: Optional[bool] = False,
-                              return_in_frame_basis: Optional[bool] = False):
-        """Return exp(-Ft) @ operator @ exp(Ft)
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-        return self.operator_into_frame(-t,
-                                        operator,
-                                        operator_in_frame_basis=operator_in_frame_basis,
-                                        return_in_frame_basis=return_in_frame_basis)
-
-
-    def generator_into_frame(self,
-                             t: float,
-                             operator: Union[Operator, np.array],
-                             operator_in_frame_basis: Optional[bool] = False,
-                             return_in_frame_basis: Optional[bool] = False):
-        """Take an generator into the frame, i.e. return
-        exp(-tF) @ operator @ exp(tF) - F.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-
-        # conjugate and subtract the frame diagonal
-        return self._conjugate_and_add(t,
-                                       operator,
-                                       op_to_add_in_fb=-np.diag(self.frame_diag),
-                                       operator_in_frame_basis=operator_in_frame_basis,
-                                       return_in_frame_basis=return_in_frame_basis)
-
-    def generator_out_of_frame(self,
-                               t: float,
-                               operator: Union[Operator, np.array],
-                               operator_in_frame_basis: Optional[bool] = False,
-                               return_in_frame_basis: Optional[bool] = False):
-        """Take an operator out of the frame, i.e. return
-        exp(tF) @ operator @ exp(-tF) + F.
-
-        Args:
-            t: time
-            y: state (array of appropriate size)
-            y_in_frame_basis: whether or not the array y is already in
-                              the basis in which the frame is diagonal
-            return_in_frame_basis: whether or not to return the result
-                                   in the frame basis
-        """
-
-        # conjugate and add the frame diagonal
-        return self._conjugate_and_add(-t,
-                                       operator,
-                                       op_to_add_in_fb=np.diag(self.frame_diag),
-                                       operator_in_frame_basis=operator_in_frame_basis,
-                                       return_in_frame_basis=return_in_frame_basis)
-
     def _conjugate_and_add(self,
                            t: float,
                            operator: np.array,
                            op_to_add_in_fb: Optional[np.array] = None,
                            operator_in_frame_basis: Optional[bool] = False,
                            return_in_frame_basis: Optional[bool] = False):
-        """General helper function for computing
+        """Concrete implementation of general helper function for computing
             exp(-tF)Gexp(tF) + B
 
         Note: B is added in the frame basis before any potential final change
@@ -607,9 +518,6 @@ class Frame(BaseFrame):
                                                carrier_freqs: Optional[np.array] = None):
         """Transform operators into the frame basis, and set operator entries
         with frequencies above the cutoff to 0.
-
-        This function is meant to be used in conjunction with
-        evaluate_generator_with_cutoff
 
         ****Should put a mathematical description here***
 

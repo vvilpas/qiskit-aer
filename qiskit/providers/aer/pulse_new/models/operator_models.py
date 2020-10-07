@@ -16,7 +16,7 @@ import numpy as np
 from copy import deepcopy
 
 from .signals import VectorSignal, Signal
-from .frame import Frame
+from .frame import BaseFrame, Frame
 from qiskit.quantum_info.operators import Operator
 
 class BaseOperatorModel(ABC):
@@ -25,14 +25,14 @@ class BaseOperatorModel(ABC):
 
     @property
     @abstractmethod
-    def frame_operator(self):
-        """Get the frame operator."""
+    def frame(self) -> BaseFrame:
+        """Get the frame."""
         pass
 
-    @frame_operator.setter
+    @frame.setter
     @abstractmethod
-    def frame_operator(self, frame_operator):
-        """Set the frame operator."""
+    def frame(self, frame):
+        """Set the frame."""
         pass
 
     @property
@@ -155,7 +155,7 @@ class OperatorModel(BaseOperatorModel):
                  operators: List[Operator],
                  signals: Optional[Union[VectorSignal, List[Signal]]] = None,
                  signal_mapping: Optional[Callable] = None,
-                 frame_operator: Optional[Union[Operator, np.array]] = None,
+                 frame: Optional[Union[Operator, np.array, Frame]] = None,
                  cutoff_freq: Optional[float] = None):
         """Initialize.
 
@@ -168,19 +168,11 @@ class OperatorModel(BaseOperatorModel):
             signal_mapping: a function returning either a
                             VectorSignal or a list of Signal objects.
 
-            frame_operator: Rotating frame operator. If specified with a 1d
+            frame: Rotating frame operator. If specified with a 1d
                             array, it is interpreted as the diagonal of a
                             diagonal matrix.
             cutoff_freq: Frequency cutoff when evaluating the model.
         """
-
-        self._frame_operator = frame_operator
-
-        self._frame = None
-        if frame_operator is None:
-            self._frame = Frame(np.zeros(operators[0].dim[0]))
-        else:
-            self._frame = Frame(frame_operator)
 
         self._operators = operators
 
@@ -195,6 +187,9 @@ class OperatorModel(BaseOperatorModel):
         # initialize internal operator representation in the frame basis
         self._ops_in_fb_with_cutoff = None
         self._ops_in_fb_with_conj_cutoff = None
+
+        self._frame_is_None = True
+        self.frame = frame
 
         if signals is not None:
             # note: setting signals includes a call to _construct_frame_helper()
@@ -261,13 +256,13 @@ class OperatorModel(BaseOperatorModel):
             self._construct_frame_basis_operators()
 
     @property
-    def frame_operator(self) -> Union[Operator, np.array]:
-        """Return the frame operator."""
-        return self._frame_operator
+    def frame(self) -> Frame:
+        """Return the frame."""
+        return self._frame
 
-    @frame_operator.setter
-    def frame_operator(self, frame_operator: Union[Operator, np.array]):
-        """Set the frame operator; must be anti-Hermitian. See class
+    @frame.setter
+    def frame(self, frame: Union[Operator, np.array, Frame]):
+        """Set the frame; must be anti-Hermitian. See class
         docstring for the effects of setting a frame.
 
         Accepts frame_operator as:
@@ -277,12 +272,17 @@ class OperatorModel(BaseOperatorModel):
               diagonal matrix, and the array gives the diagonal elements.
         """
 
-        self._frame_operator = frame_operator
-        self._frame = None
-        if frame_operator is None:
+        if frame is None:
+            self._frame_is_None = True
             self._frame = Frame(np.zeros(self._operators[0].dim[0]))
         else:
-            self._frame = Frame(frame_operator)
+            if isinstance(frame, Frame):
+                self._frame = frame
+            else:
+                self._frame = Frame(frame)
+
+            self._frame_is_None = False
+
         self._construct_frame_basis_operators()
 
     @property
@@ -317,10 +317,10 @@ class OperatorModel(BaseOperatorModel):
         sig_vals = self.signals.value(time)
 
         op_combo = self._evaluate_linear_combo(sig_vals)
-        return self._frame.generator_into_frame(time,
-                                                op_combo,
-                                                operator_in_frame_basis=True,
-                                                return_in_frame_basis=in_frame_basis)
+        return self.frame.generator_into_frame(time,
+                                               op_combo,
+                                               operator_in_frame_basis=True,
+                                               return_in_frame_basis=in_frame_basis)
 
     @property
     def drift(self) -> np.array:
@@ -329,7 +329,7 @@ class OperatorModel(BaseOperatorModel):
         """
 
         # for now if the frame operator is not None raise an error
-        if self.frame_operator is not None:
+        if not self._frame_is_None:
             raise Exception("""The drift is currently ill-defined if
                                frame_operator is not None.""")
 
@@ -357,6 +357,6 @@ class OperatorModel(BaseOperatorModel):
             carrier_freqs = self.carrier_freqs
 
         self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = (
-            self._frame.operators_into_frame_basis_with_cutoff(self._operators,
-                                                               self.cutoff_freq,
-                                                               carrier_freqs))
+            self.frame.operators_into_frame_basis_with_cutoff(self._operators,
+                                                              self.cutoff_freq,
+                                                              carrier_freqs))
