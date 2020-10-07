@@ -67,12 +67,9 @@ class BaseFrame(ABC):
     together in this context.
 
     ***This needs to be filled out/explained***
-    """
 
-    @property
-    @abstractmethod
-    def dim(self) -> int:
-        """Dimension of frame operator."""
+    Note: all abstract doc strings are written in a numpy style
+    """
 
     @property
     @abstractmethod
@@ -93,6 +90,287 @@ class BaseFrame(ABC):
     @abstractmethod
     def frame_basis_adjoint(self) -> np.array:
         """Adjoint of the diagonalizing unitary."""
+
+    @abstractmethod
+    def state_into_frame_basis(self, y: np.array) -> np.array:
+        """Take a state into the frame basis, i.e. return
+        self.frame_basis_adjoint @ y.
+
+        Args:
+            y: the state
+        Returns:
+            np.array: the state in the frame basis
+        """
+
+    @abstractmethod
+    def state_out_of_frame_basis(self, y: np.array) -> np.array:
+        """Take a state out of the frame basis, i.e.
+        return self.frame_basis @ y.
+
+        Args:
+            y: the state
+        Returns:
+            np.array: the state in the frame basis
+        """
+
+    @abstractmethod
+    def operator_into_frame_basis(self,
+                                  op: Union[Operator, np.array]) -> np.array:
+        """Take an operator into the frame basis, i.e. return
+        self.frame_basis_adjoint @ A @ self.frame_basis
+
+        Args:
+            op: the operator.
+        Returns:
+            np.array: the operator in the frame basis
+        """
+
+    @abstractmethod
+    def operator_out_of_frame_basis(self,
+                                    op: Union[Operator, np.array]) -> np.array:
+        """Take an operator out of the frame basis, i.e. return
+        self.frame_basis @ to_array(op) @ self.frame_basis_adjoint
+
+        Args:
+            op: the operator.
+        Returns:
+            np.array: the operator in the frame basis
+        """
+
+    @abstractmethod
+    def operators_into_frame_basis(self,
+                                   operators: Union[List[Operator], np.array]) -> np.array:
+        """Given a list of operators, apply self.operator_into_frame_basis to
+        all and return as a 3d array.
+
+        Args:
+            operators: list of operators
+        """
+
+    @abstractmethod
+    def state_into_frame(self,
+                         t: float,
+                         y: np.array,
+                         y_in_frame_basis: Optional[bool] = False,
+                         return_in_frame_basis: Optional[bool] = False):
+        """Take a state into the frame, i.e. return exp(-tF) @ y.
+
+        Args:
+            t: time
+            y: state (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+
+    def state_out_of_frame(self,
+                           t: float,
+                           y: np.array,
+                           y_in_frame_basis: Optional[bool] = False,
+                           return_in_frame_basis: Optional[bool] = False):
+        """Take a state out of the frame, i.e. return exp(tF) @ y.
+
+        Default implementation is to call self.state_into_frame.
+
+        Args:
+            t: time
+            y: state (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+        return self.state_into_frame(-t, y,
+                                     y_in_frame_basis,
+                                     return_in_frame_basis)
+
+    @abstractmethod
+    def _conjugate_and_add(self,
+                           t: float,
+                           operator: np.array,
+                           op_to_add_in_fb: Optional[np.array] = None,
+                           operator_in_frame_basis: Optional[bool] = False,
+                           return_in_frame_basis: Optional[bool] = False):
+        """Generalized helper function for taking operators and generators
+        into/out of the frame.
+
+        Given operator G, and op_to_add_in_fb, returns exp(-tF)Gexp(tF) + B,
+        where B is assumed to be specified in the frame basis.
+
+        Args:
+            t: time.
+            operator: The operator G above.
+            op_to_add_in_fb: The operator B above.
+            operator_in_frame_basis: Whether G is specified in the frame basis.
+            return_in_frame_basis: Whether the returned result should be in the
+                                   frame basis.
+        """
+
+    def operator_into_frame(self,
+                            t: float,
+                            operator: Union[Operator, np.array],
+                            operator_in_frame_basis: Optional[bool] = False,
+                            return_in_frame_basis: Optional[bool] = False):
+        """Bring an operator into the frame, i.e. return
+        exp(-tF) @ operator @ exp(tF)
+
+        Default implmentation is to use self._conjugate_and_add
+
+        Args:
+            t: time
+            operator: array of appropriate size
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+        return self._conjugate_and_add(t,
+                                       operator,
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
+
+    def operator_out_of_frame(self,
+                              t: float,
+                              operator: Union[Operator, np.array],
+                              operator_in_frame_basis: Optional[bool] = False,
+                              return_in_frame_basis: Optional[bool] = False):
+        """Bring an operator into the frame, i.e. return
+        exp(tF) @ operator @ exp(-tF)
+
+        Default implmentation is to use self.operator_into_frame
+
+        Args:
+            t: time
+            operator: array of appropriate size
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+        return self.operator_into_frame(-t,
+                                        operator,
+                                        operator_in_frame_basis=operator_in_frame_basis,
+                                        return_in_frame_basis=return_in_frame_basis)
+
+
+    def generator_into_frame(self,
+                             t: float,
+                             operator: Union[Operator, np.array],
+                             operator_in_frame_basis: Optional[bool] = False,
+                             return_in_frame_basis: Optional[bool] = False):
+        """Take an generator into the frame, i.e. return
+        exp(-tF) @ operator @ exp(tF) - F.
+
+        Default implementation is to use self._conjugate_and_add
+
+        Args:
+            t: time
+            operator: generator (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+
+        # conjugate and subtract the frame diagonal
+        return self._conjugate_and_add(t,
+                                       operator,
+                                       op_to_add_in_fb=-np.diag(self.frame_diag),
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
+
+    def generator_out_of_frame(self,
+                               t: float,
+                               operator: Union[Operator, np.array],
+                               operator_in_frame_basis: Optional[bool] = False,
+                               return_in_frame_basis: Optional[bool] = False):
+        """Take an operator out of the frame, i.e. return
+        exp(tF) @ operator @ exp(-tF) + F.
+
+        Default implementation is to use self._conjugate_and_add
+
+        Args:
+            t: time
+            operator: generator (array of appropriate size)
+            y_in_frame_basis: whether or not the array y is already in
+                              the basis in which the frame is diagonal
+            return_in_frame_basis: whether or not to return the result
+                                   in the frame basis
+        """
+
+        # conjugate and add the frame diagonal
+        return self._conjugate_and_add(-t,
+                                       operator,
+                                       op_to_add_in_fb=np.diag(self.frame_diag),
+                                       operator_in_frame_basis=operator_in_frame_basis,
+                                       return_in_frame_basis=return_in_frame_basis)
+
+
+class Frame(BaseFrame):
+
+    def __init__(self, frame_operator: Union[Operator, np.array]):
+
+        # if None, set to a 1d array of zeros
+        if frame_operator is None:
+            raise Exception("""frame_operator cannot be None.""")
+
+        self._frame_operator = frame_operator
+
+        # if frame_operator is a 1d array, assume already diagonalized
+        if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
+
+            # verify that it is anti-hermitian (i.e. purely imaginary)
+            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
+                raise Exception("""frame_operator must be an
+                                   anti-Hermitian matrix.""")
+
+            self._frame_diag = frame_operator
+            self._frame_basis = np.eye(len(frame_operator))
+            self._frame_basis_adjoint = self.frame_basis
+        # if not, diagonalize it
+        else:
+            # Ensure that it is an Operator object
+            frame_operator = Operator(frame_operator)
+
+            # verify anti-hermitian
+            herm_part = frame_operator + frame_operator.adjoint()
+            if herm_part != Operator(np.zeros(frame_operator.dim)):
+                raise Exception("""frame_operator must be an
+                                   anti-Hermitian matrix.""")
+
+            # diagonalize with eigh, utilizing assumption of anti-hermiticity
+            frame_diag, frame_basis = np.linalg.eigh(1j * frame_operator.data)
+
+            self._frame_diag = -1j * frame_diag
+            self._frame_basis = frame_basis
+            self._frame_basis_adjoint = frame_basis.conj().transpose()
+
+        self._dim = len(self._frame_diag)
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    @property
+    def frame_operator(self) -> np.array:
+        """The original frame operator."""
+        return self._frame_operator
+
+    @property
+    def frame_diag(self) -> np.array:
+        """Diagonal of the frame operator."""
+        return self._frame_diag
+
+    @property
+    def frame_basis(self) -> np.array:
+        """Array containing diagonalizing unitary."""
+        return self._frame_basis
+
+    @property
+    def frame_basis_adjoint(self) -> np.array:
+        """Adjoint of the diagonalizing unitary."""
+        return self._frame_basis_adjoint
 
     def state_into_frame_basis(self, y: np.array) -> np.array:
         """Transform y into the frame basis.
@@ -310,8 +588,8 @@ class BaseFrame(ABC):
         # get frame transformation matrix in diagonal basis
         # assumption that F is anti-Hermitian implies conjugation of
         # diagonal gives inversion
-        frame_mat = np.ones((self.dim, self.dim)) * np.exp(t * self.frame_diag)
-        frame_mat = frame_mat * (frame_mat.transpose().conj())
+        exp_freq = np.exp(t * self.frame_diag)
+        frame_mat = np.outer(exp_freq.conj(), exp_freq)
         out = frame_mat * out
 
         if op_to_add_in_fb is not None:
@@ -367,178 +645,7 @@ class BaseFrame(ABC):
                                 < cutoff_freq).astype(int)
 
         return (cutoff_array * ops_in_frame_basis,
-                cutoff_array.transpose(0, 2, 1) * ops_in_frame_basis)
-
-    def evaluate_generator_with_cutoff(self,
-                                       t: float,
-                                       coeffs: np.array,
-                                       ops_in_fb_with_cutoff: np.array,
-                                       ops_in_fb_with_conj_cutoff: np.array,
-                                       return_in_frame_basis: Optional[bool] = False):
-        """Evaluate the generator at a given time with a list of coefficients,
-        and with a given frequency cutoff.
-
-        To be used in conjunction with the output of
-        operators_into_frame_basis_with_cutoff
-
-        **** Give mathematical description of this ****
-
-        Args:
-            t: time
-            coeffs: Complex valued coefficients
-            ops_in_fb_with_cutoff: operators in frame basis with cutoffs
-            ops_in_fb_with_conj_cutoff: operators in frame basis with conjugate
-                                        cutoffs
-            return_in_frame_basis: whether to return the result in the frame
-                                   basis
-
-        Returns:
-            generator operator in frame with cutoffs
-        """
-
-        # construct the linear combination of operators with coefficients and
-        # conjugate coefficients, subtracting the frame operator
-        op_combo = (0.5 * (
-                           np.tensordot(coeffs, ops_in_fb_with_cutoff, axes=1)
-                           + np.tensordot(coeffs.conj(),
-                                          ops_in_fb_with_conj_cutoff,
-                                          axes=1)
-                           )
-                    - np.diag(self.frame_diag))
-
-
-        # Apply the frame transformation as an entrywise product
-        exp_freq = np.exp(t * self.frame_diag)
-        frame_mat = np.outer(exp_freq.conj(), exp_freq)
-        full_op_in_frame = frame_mat * op_combo
-
-        if return_in_frame_basis:
-            return full_op_in_frame
-        else:
-            return self.operator_out_of_frame_basis(full_op_in_frame)
-
-
-    def _get_canonical_freq_arrays(self,
-                                   carrier_freqs: np.array,
-                                   cutoff_freq: Optional[float] = None) -> Tuple[np.array, Union[None, np.array]]:
-        """Get frequency and cutoff arrays in basis in which F is diagonal.
-        """
-        # create difference matrix for diagonal elements
-        dim = len(self.frame_diag)
-        D_diff = np.ones((dim, dim)) * self.frame_diag
-        D_diff = D_diff - D_diff.transpose()
-
-        # set up matrix encoding frequencies
-        im_angular_freqs = 1j * 2 * np.pi * carrier_freqs
-        freq_array = np.array([w + D_diff for w in im_angular_freqs])
-
-        # set up cutoff frequency matrix - i.e. same shape as freq_array - with
-        # each entry a 1 if the corresponding entry of freq_array has a
-        # frequency below the cutoff, and 0 otherwise
-        cutoff_array = None
-        if cutoff_freq is not None:
-            cutoff_array = ((np.abs(freq_array.imag) / (2 * np.pi))
-                                    < cutoff_freq).astype(int)
-
-        return freq_array, cutoff_array
-
-    def _evaluate_canonical_operator_combo(self,
-                                           t: float,
-                                           coefficients: np.array,
-                                           operators_in_frame_basis: np.array,
-                                           freq_array: np.array,
-                                           cutoff_array: Optional[np.array] = None,
-                                           return_in_frame_basis: Optional[bool] = False):
-        """Evaluate the "canonical" decomposition.
-
-        Explain this!!
-        """
-        # first evaluate the unconjugated coefficients for each matrix element,
-        # given by the coefficient for the full matrix multiplied by the
-        # exponentiated frequency term for each entry
-        Q = (coefficients[:, np.newaxis, np.newaxis] * np.exp(freq_array * t))
-
-        # apply cutoff if present
-        if cutoff_array is not None:
-           Q = cutoff_array * Q
-
-        # multiplying the operators by the average of the "unconjugated" and
-        # "conjugated" coefficients
-        op_list = (0.5 * (Q + Q.conj().transpose(0, 2, 1)) *
-                   operators_in_frame_basis)
-
-        # sum the operators and subtract the frame operator
-        op_in_frame_basis = np.sum(op_list, axis=0) - np.diag(self.frame_diag)
-
-        if return_in_frame_basis:
-            return op_in_frame_basis
-        else:
-            return self.operator_out_of_frame_basis(op_in_frame_basis)
-
-class Frame(BaseFrame):
-
-    def __init__(self, frame_operator: Union[Operator, np.array]):
-
-        # if None, set to a 1d array of zeros
-        if frame_operator is None:
-            raise Exception("""frame_operator cannot be None.""")
-
-        self._frame_operator = frame_operator
-
-        # if frame_operator is a 1d array, assume already diagonalized
-        if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
-
-            # verify that it is anti-hermitian (i.e. purely imaginary)
-            if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
-                raise Exception("""frame_operator must be an
-                                   anti-Hermitian matrix.""")
-
-            self._frame_diag = frame_operator
-            self._frame_basis = np.eye(len(frame_operator))
-            self._frame_basis_adjoint = self.frame_basis
-        # if not, diagonalize it
-        else:
-            # Ensure that it is an Operator object
-            frame_operator = Operator(frame_operator)
-
-            # verify anti-hermitian
-            herm_part = frame_operator + frame_operator.adjoint()
-            if herm_part != Operator(np.zeros(frame_operator.dim)):
-                raise Exception("""frame_operator must be an
-                                   anti-Hermitian matrix.""")
-
-            # diagonalize with eigh, utilizing assumption of anti-hermiticity
-            frame_diag, frame_basis = np.linalg.eigh(1j * frame_operator.data)
-
-            self._frame_diag = -1j * frame_diag
-            self._frame_basis = frame_basis
-            self._frame_basis_adjoint = frame_basis.conj().transpose()
-
-        self._dim = len(self._frame_diag)
-
-    @property
-    def dim(self) -> int:
-        return self._dim
-
-    @property
-    def frame_operator(self) -> np.array:
-        """The original frame operator."""
-        return self._frame_operator
-
-    @property
-    def frame_diag(self) -> np.array:
-        """Diagonal of the frame operator."""
-        return self._frame_diag
-
-    @property
-    def frame_basis(self) -> np.array:
-        """Array containing diagonalizing unitary."""
-        return self._frame_basis
-
-    @property
-    def frame_basis_adjoint(self) -> np.array:
-        """Adjoint of the diagonalizing unitary."""
-        return self._frame_basis_adjoint
+                cutoff_array.transpose([0, 2, 1]) * ops_in_frame_basis)
 
 
 # type handling

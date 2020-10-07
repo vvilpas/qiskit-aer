@@ -225,7 +225,7 @@ class TestOperatorModel(unittest.TestCase):
             self.assertTrue('ill-defined' in str(e))
 
     def test_cutoff_freq(self):
-        """Test cutoff_freq"""
+        """Test evaluation with a cutoff frequency."""
 
         # enter frame of drift
         self.basic_model.frame_operator = self.basic_model.drift

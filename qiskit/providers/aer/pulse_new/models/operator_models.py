@@ -95,11 +95,6 @@ class BaseOperatorModel(ABC):
         pass
 
     @abstractmethod
-    def evaluate_decomposition(self, t: float) -> np.array:
-        """Evaluate the canonical frame decomposition."""
-        pass
-
-    @abstractmethod
     def copy(self):
         """Return a copy of self."""
         pass
@@ -320,11 +315,12 @@ class OperatorModel(BaseOperatorModel):
                                evaluated without signals.""")
 
         sig_vals = self.signals.value(time)
-        return self._frame.evaluate_generator_with_cutoff(time,
-                                                          sig_vals,
-                                                          self._ops_in_fb_with_cutoff,
-                                                          self._ops_in_fb_with_conj_cutoff,
-                                                          in_frame_basis)
+
+        op_combo = self._evaluate_linear_combo(sig_vals)
+        return self._frame.generator_into_frame(time,
+                                                op_combo,
+                                                operator_in_frame_basis=True,
+                                                return_in_frame_basis=in_frame_basis)
 
     @property
     def drift(self) -> np.array:
@@ -337,15 +333,15 @@ class OperatorModel(BaseOperatorModel):
             raise Exception("""The drift is currently ill-defined if
                                frame_operator is not None.""")
 
-        drift_env_vals = self.signals.drift_array
+        drift_sig_vals = self.signals.drift_array
 
-        return self._frame.evaluate_generator_with_cutoff(0.,
-                                                          drift_env_vals,
-                                                          self._ops_in_fb_with_cutoff,
-                                                          self._ops_in_fb_with_conj_cutoff)
+        return self._evaluate_linear_combo(drift_sig_vals)
 
-    def evaluate_decomposition(self, t: float) -> np.array:
-        raise Exception("Not implemented.")
+    def _evaluate_linear_combo(self, coeffs):
+        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_with_cutoff, axes=1)
+                      + np.tensordot(coeffs.conj(),
+                                     self._ops_in_fb_with_conj_cutoff,
+                                     axes=1))
 
     def copy(self):
         return deepcopy(self)
@@ -361,6 +357,6 @@ class OperatorModel(BaseOperatorModel):
             carrier_freqs = self.carrier_freqs
 
         self._ops_in_fb_with_cutoff, self._ops_in_fb_with_conj_cutoff = (
-         self._frame.operators_into_frame_basis_with_cutoff(self._operators,
-                                                            self.cutoff_freq,
-                                                            carrier_freqs))
+            self._frame.operators_into_frame_basis_with_cutoff(self._operators,
+                                                               self.cutoff_freq,
+                                                               carrier_freqs))
