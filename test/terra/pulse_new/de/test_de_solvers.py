@@ -40,7 +40,18 @@ class TestDE_Solvers(unittest.TestCase):
 
         self.y0 = np.array([1., 0.])
 
+    def test_integrate_w_basic_model(self):
+        """Test integration with the basic model"""
 
+        de_problem = BMDE_Problem(generator=self.basic_model,
+                                  y0=self.y0,
+                                  t0=0.)
+        solver = BMDE_Solver(de_problem)
+
+        solver.integrate(1. / self.r)
+
+        probs = np.abs(solver.y)**2
+        self.assertTrue(probs[1] > 0.999)
 
     def assertAlmostEqual(self, A, B, tol=10**-15):
         self.assertTrue(np.abs(A - B).max() < tol)
