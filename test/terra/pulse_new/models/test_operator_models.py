@@ -59,21 +59,27 @@ class TestOperatorModel(unittest.TestCase):
         except Exception as e:
             self.assertTrue('anti-Hermitian' in str(e))
 
-    def test_diag_frame_operator(self):
-        """Test setting a diagonal frame operator."""
+    def test_diag_frame_operator_basic_model(self):
+        """Test setting a diagonal frame operator for the internally
+        set up basic model.
+        """
 
-        self._frame_operator_test(np.array([1j, -1j]), 1.123)
-        self._frame_operator_test(np.array([1j, -1j]), np.pi)
-
-
-    def test_non_diag_frame_operator(self):
-        """Test setting a diagonal frame operator."""
-        self._frame_operator_test(-1j * (self.Y + self.Z), 1.123)
-        self._frame_operator_test(-1j * (self.Y - self.Z), np.pi)
+        self._basic_frame_evaluate_test(np.array([1j, -1j]), 1.123)
+        self._basic_frame_evaluate_test(np.array([1j, -1j]), np.pi)
 
 
-    def _frame_operator_test(self, frame_operator, t):
-        """Routine for testing setting of valid frame operators."""
+    def test_non_diag_frame_operator_basic_model(self):
+        """Test setting a non-diagonal frame operator for the internally
+        set up basic model.
+        """
+        self._basic_frame_evaluate_test(-1j * (self.Y + self.Z), 1.123)
+        self._basic_frame_evaluate_test(-1j * (self.Y - self.Z), np.pi)
+
+
+    def _basic_frame_evaluate_test(self, frame_operator, t):
+        """Routine for testing setting of valid frame operators using the
+        basic_model.
+        """
 
         self.basic_model.frame = frame_operator
 
@@ -99,8 +105,8 @@ class TestOperatorModel(unittest.TestCase):
 
         self.assertAlmostEqual(value, expected)
 
-    def test_evaluate_no_frame(self):
-        """Test evaluation with no frame."""
+    def test_evaluate_no_frame_basic_model(self):
+        """Test evaluation without a frame in the basic model."""
 
         t = 3.21412
         value = self.basic_model.evaluate(t)
@@ -111,8 +117,8 @@ class TestOperatorModel(unittest.TestCase):
 
         self.assertAlmostEqual(value, expected)
 
-    def test_evaluate_in_frame_basis(self):
-        """Test evaluation in frame basis."""
+    def test_evaluate_in_frame_basis_basic_model(self):
+        """Test evaluation in frame basis in the basic_model."""
 
         frame_op = -1j * (self.X + 0.2 * self.Y + 0.1 * self.Z).data
 
@@ -138,8 +144,53 @@ class TestOperatorModel(unittest.TestCase):
 
         self.assertAlmostEqual(value, expected)
 
-    def test_lmult_rmult_no_frame(self):
-        """Test evaluation with no frame."""
+
+    def test_evaluate_pseudorandom(self):
+        """Test evaluate with pseudorandom inputs."""
+
+        rng = np.random.default_rng(30493)
+        num_terms = 3
+        dim = 5
+        b = 1. # bound on size of random terms
+        rand_op = (rng.uniform(low=-b, high=b, size=(dim,dim)) +
+                   1j*rng.uniform(low=-b, high=b, size=(dim,dim)))
+        frame_op = rand_op - rand_op.conj().transpose()
+        rand_operators = (rng.uniform(low=-b,high=b, size=(num_terms, dim, dim)) +
+                            1j * rng.uniform(low=-b,high=b, size=(num_terms, dim, dim)))
+
+        rand_coeffs = (rng.uniform(low=-b,high=b, size=(num_terms)) +
+                            1j * rng.uniform(low=-b,high=b, size=(num_terms)))
+        rand_carriers = rng.uniform(low=-b,high=b, size=(num_terms))
+
+        self._test_evaluate(frame_op, rand_operators, rand_coeffs, rand_carriers)
+
+        rng = np.random.default_rng(94818)
+        num_terms = 5
+        dim = 10
+        b = 1. # bound on size of random terms
+        rand_op = (rng.uniform(low=-b, high=b, size=(dim,dim)) +
+                   1j*rng.uniform(low=-b, high=b, size=(dim,dim)))
+        frame_op = rand_op - rand_op.conj().transpose()
+        rand_operators = (rng.uniform(low=-b,high=b, size=(num_terms, dim, dim)) +
+                            1j * rng.uniform(low=-b,high=b, size=(num_terms, dim, dim)))
+
+        rand_coeffs = (rng.uniform(low=-b,high=b, size=(num_terms)) +
+                            1j * rng.uniform(low=-b,high=b, size=(num_terms)))
+        rand_carriers = rng.uniform(low=-b,high=b, size=(num_terms))
+
+    def _test_evaluate(self, frame_op, operators, coefficients, carriers):
+
+        vec_sig = VectorSignal(lambda t: coefficients, carriers)
+        model = OperatorModel(operators, vec_sig, frame=frame_op)
+
+        value = model.evaluate(1.)
+        coeffs = np.real(coefficients * np.exp(1j * 2 * np.pi * carriers * 1.))
+        expected = expm(-frame_op) @ np.tensordot(coeffs, operators, axes=1) @ expm(frame_op) - frame_op
+
+        self.assertAlmostEqual(value, expected)
+
+    def test_lmult_rmult_no_frame_basic_model(self):
+        """Test evaluation with no frame in the basic model."""
 
         y0 = np.array([[1., 2.], [0., 4.]])
         t = 3.21412

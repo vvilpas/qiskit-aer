@@ -20,7 +20,30 @@ from .frame import BaseFrame, Frame
 from qiskit.quantum_info.operators import Operator
 
 class BaseOperatorModel(ABC):
-    """Abstract interface for an operator model.
+    """BaseOperatorModel is an abstract interface for a time-dependent operator
+    :math:`G(t)`, with functionality of relevance for differential
+    equations of the form :math:`\dot{y}(t) = G(t)y(t)`.
+
+    The core functionality is evaluation of :math:`G(t)` and the products
+    :math:`AG(t)` and :math:`G(t)A`, for operators :math:`A` of suitable
+    shape.
+
+    Additionally, this abstract class requires implementation of 3 properties
+    to facilitate the use of this object in solving differential equations:
+        - A "drift", which is meant to return the "time-independent" part of
+          :math:`G(t)`
+        - A "frame", here specified as a :class:`BaseFrame` object, which
+          representing an anti-Hermitian operator :math:`F`, specifying
+          the transformation :math:`G(t) \mapsto G'(t) = e^{-tF}G(t)e^{tF} - F`.
+
+          If a frame is set, the evaluation functions are modified to work
+          with G'(t). Furthermore, all evaluation functions have the option
+          to return the results in a basis in which :math:`F` is diagonalized,
+          to save on the cost of computing :math:`e^{\pm tF}`.
+        - A `cutoff_freq`: a cutoff frequency for further modifying the
+          evaluation of :math:`G'(t)` to remove terms above a given frequency.
+          In this abstract class the exact meaning of this is left unspecified;
+          it is left to concrete implementations to define this.
     """
 
     @property
@@ -31,19 +54,19 @@ class BaseOperatorModel(ABC):
 
     @frame.setter
     @abstractmethod
-    def frame(self, frame):
+    def frame(self, frame: BaseFrame):
         """Set the frame."""
         pass
 
     @property
     @abstractmethod
-    def cutoff_freq(self):
+    def cutoff_freq(self) -> float:
         """Get cutoff frequency."""
         pass
 
     @cutoff_freq.setter
     @abstractmethod
-    def cutoff_freq(self, cutoff_freq):
+    def cutoff_freq(self, cutoff_freq: float):
         """Set cutoff frequency."""
         pass
 
@@ -94,42 +117,22 @@ class BaseOperatorModel(ABC):
         """Evaluate the constant part of the model."""
         pass
 
-    @abstractmethod
     def copy(self):
         """Return a copy of self."""
-        pass
+        return deepcopy(self)
 
 
 class OperatorModel(BaseOperatorModel):
-    """OperatorModel representing a sum of :class:`Operator` objects with
-    time dependent coefficients.
-
-    Specifically, this object represents a time dependent matrix of
-    the form:
+    """OperatorModel is a concrete instance of BaseOperatorModel, where the
+    operator :math:`G(t)` is explicitly constructed as:
 
     .. math::
 
         G(t) = \sum_{i=0}^{k-1} s_i(t) G_i,
 
-    for :math:`G_i` matrices (represented by :class:`Operator` objects),
-    and the :math:`s_i(t)` given by signals represented by a
+    where the :math:`G_i` are matrices (represented by :class:`Operator`
+    objects), and the :math:`s_i(t)` given by signals represented by a
     :class:`VectorSignal` object, or a list of :class:`Signal` objects.
-
-    This object contains functionality to evaluate :math:`G(t)` for a given
-    :math:`t`, or to compute products :math:`G(t)A` and :math:`AG(t)` for
-    :math:`A` an :class:`Operator` or array of suitable dimension.
-
-    Additionally, this class has functionality for representing :math:`G(t)`
-    in a rotating frame, and setting frequency cutoffs
-    (e.g. for the rotating wave approximation).
-    Specifically, given an anti-Hermitian frame operator :math:`F` (i.e.
-    :math:`F^\dagger = -F`), entering the frame of :math:`F` results in
-    the object representing the rotating operator :math:`e^{-Ft}G(t)e^{Ft} - F`.
-
-    Further, if a frequency cutoff is set, when evaluating the
-    `OperatorModel`, any terms with a frequency above the cutoff
-    (which combines both signal frequency information and frame frequency
-    information) will be set to :math:`0`.
 
     The signals in the model can be specified either directly (by giving a
     list of Signal objects or a VectorSignal), or by specifying a
@@ -149,6 +152,12 @@ class OperatorModel(BaseOperatorModel):
         # the output of signal_map(2.), converted to a VectorSignal
 
     See the signals property setter for a more detailed description.
+
+    For specifying a frame, this object works with the concrete
+    :class:`Frame`, a subclass of :class:`BaseFrame`.
+
+    To do:
+        insert mathematical description of frame/cutoff_freq handling
     """
 
     def __init__(self,
@@ -258,14 +267,8 @@ class OperatorModel(BaseOperatorModel):
 
     @frame.setter
     def frame(self, frame: Union[Operator, np.array, Frame]):
-        """Set the frame; must be anti-Hermitian. See class
-        docstring for the effects of setting a frame.
-
-        Accepts frame_operator as:
-            - An Operator object
-            - A 2d array
-            - A 1d array - in which case it is assumed the frame operator is a
-              diagonal matrix, and the array gives the diagonal elements.
+        """Set the frame; either an already instantiated :class:`Frame` object
+        a valid argument for the constructor of :class:`Frame`, or `None`.
         """
 
         if frame is None:
@@ -333,36 +336,11 @@ class OperatorModel(BaseOperatorModel):
 
         return self._evaluate_linear_combo(drift_sig_vals)
 
-    def copy(self):
-        return deepcopy(self)
-
-    def _evaluate_linear_combo(self, coeffs):
-        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_w_cutoff, axes=1)
-                      + np.tensordot(coeffs.conj(),
-                                     self._ops_in_fb_w_conj_cutoff,
-                                     axes=1))
-
-    @property
-    def _ops_in_fb_w_cutoff(self):
-        if self.__ops_in_fb_w_cutoff is None:
-            self._construct_ops_in_fb_w_cutoff()
-
-        return self.__ops_in_fb_w_cutoff
-
-    @property
-    def _ops_in_fb_w_conj_cutoff(self):
-        if self.__ops_in_fb_w_conj_cutoff is None:
-            self._construct_ops_in_fb_w_cutoff()
-
-        return self.__ops_in_fb_w_conj_cutoff
-
-    def _reset_internal_ops(self):
-        self.__ops_in_fb_w_cutoff = None
-        self.__ops_in_fb_w_conj_cutoff = None
-
     def _construct_ops_in_fb_w_cutoff(self):
-        """Helper function for constructing frame helper from relevant
-        attributes.
+        """Construct versions of operators in frame basis with cutoffs
+        and conjugate cutoffs. To be used in conjunction with
+        _evaluate_linear_combo to compute the operator in the frame basis
+        with frequency cutoffs applied.
         """
         carrier_freqs = None
         if self.carrier_freqs is None:
@@ -374,3 +352,35 @@ class OperatorModel(BaseOperatorModel):
             self.frame.operators_into_frame_basis_with_cutoff(self._operators,
                                                               self.cutoff_freq,
                                                               carrier_freqs))
+
+    def _reset_internal_ops(self):
+        """Helper function to be used by various setters whose value changes
+        require reconstruction of the internal operators.
+        """
+        self.__ops_in_fb_w_cutoff = None
+        self.__ops_in_fb_w_conj_cutoff = None
+
+    @property
+    def _ops_in_fb_w_cutoff(self):
+        """Internally stored operators in frame basis with cutoffs."""
+        if self.__ops_in_fb_w_cutoff is None:
+            self._construct_ops_in_fb_w_cutoff()
+
+        return self.__ops_in_fb_w_cutoff
+
+    @property
+    def _ops_in_fb_w_conj_cutoff(self):
+        """Internally stored operators in frame basis with conjugate cutoffs."""
+        if self.__ops_in_fb_w_conj_cutoff is None:
+            self._construct_ops_in_fb_w_cutoff()
+
+        return self.__ops_in_fb_w_conj_cutoff
+
+    def _evaluate_linear_combo(self, coeffs):
+        """Evaluate the operator with a given list of signal values
+        (including carrier frequencies).
+        """
+        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_w_cutoff, axes=1)
+                      + np.tensordot(coeffs.conj(),
+                                     self._ops_in_fb_w_conj_cutoff,
+                                     axes=1))
