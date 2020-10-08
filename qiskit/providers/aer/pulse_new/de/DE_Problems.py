@@ -16,13 +16,44 @@ import numpy as np
 from typing import Union, List, Optional
 
 from qiskit.quantum_info.operators import Operator
+from qiskit.providers.aer.pulse_new.models.frame import BaseFrame
 from qiskit.providers.aer.pulse_new.models.operator_models import BaseOperatorModel
 from qiskit.providers.aer.pulse_new.de.type_utils import StateTypeConverter
 
 class BMDE_Problem:
-    """Class for representing Bilinear Matrix Differential Equations.
+    """Class for representing Bilinear Matrix Differential Equations (BMDEs),
+    which are differential equations of the form:
 
-    Generator is in the form of a BaseOperatorModel
+    .. math::
+
+        \dot{y}(t) = G(t)y(t)
+
+    with initial condition :math:`y(0) = ` `y0`. This class is primarly a
+    data container, with additional functionality for setting up the BMDE
+    to be solved.
+
+    This class specifies a BMDE in terms of:
+        - The `generator` :math:`G(t)`, expected to be a concrete instance
+          of :class:`BaseOperatorModel`.
+        - The initial state `y0`.
+        - Either the initial time `t0`, or an interval `[t0, tf]`.
+        - A frame specifying the frame to solve in, expected to be a concrete
+          instance of :class:`BaseFrame`, a valid argument to instantiate the
+          subclass of :class:`BaseFrame` that the `generator` works with,
+          the string `'auto'`, indicating an automatic choice, or `None`,
+          indicating that the system should be solved in as is.
+        - A `cutoff_freq`, indicating that the BMDE should be solved with
+          a rotating wave approximation.
+        - A :class:`StateTypeConverter` object, which is only of relevance if
+          some transformation was required to get the BMDE in standard form.
+
+    Some special behaviour:
+        - If the `generator` already has a frame specified, the BMDE will be
+          solved in that frame regardless of the frame specified when
+          constructing this class. Additionally, in this case, when solved,
+          the results will be returned in the rotating frame.
+        - If a cutoff frequency is specified in both the `generator` and
+          as an argument to this class, an `Exception` is raised.
     """
 
     def __init__(self,
@@ -30,11 +61,10 @@ class BMDE_Problem:
                  y0: Optional[np.ndarray] = None,
                  t0: Optional[float] = None,
                  interval: Optional[List[float]] = None,
-                 frame_operator: Optional[Union[str, Operator, np.ndarray]] = 'auto',
+                 frame: Optional[Union[str, Operator, np.ndarray, BaseFrame]] = 'auto',
                  cutoff_freq: Optional[float] = None,
                  state_type_converter: Optional[StateTypeConverter] = None):
-        """fill in
-        """
+        """Specify the BMDE problem, as described in the class doc string."""
 
         # set state and time parameters
         self.y0 = y0
@@ -50,20 +80,21 @@ class BMDE_Problem:
 
         self._state_type_converter = state_type_converter
 
-        # copy the generator
+        # copy the generator to preserve state of user's generator
         self._generator = generator.copy()
 
         # set up frame
-        if self._generator.frame_operator is not None:
-            # if the generator has a frame specified, leave it as
+        if self._generator.frame.frame_operator is not None:
+            # if the generator has a frame specified, leave it as,
+            # and specify that the user is in the frame
             self._user_in_frame = True
         else:
             # if auto, go into the drift part of the generator, otherwise
-            # set it to whatever as passed
-            if frame_operator == 'auto':
-                self._generator.frame_operator = anti_herm_part(generator.drift)
+            # set it to whatever is passed
+            if frame == 'auto':
+                self._generator.frame = anti_herm_part(generator.drift)
             else:
-                self._generator.frame_operator = frame_operator
+                self._generator.frame = frame
 
             self._user_in_frame = False
 

@@ -272,13 +272,15 @@ class BaseFrame(ABC):
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
         """
-
-        # conjugate and subtract the frame diagonal
-        return self._conjugate_and_add(t,
-                                       operator,
-                                       op_to_add_in_fb=-np.diag(self.frame_diag),
-                                       operator_in_frame_basis=operator_in_frame_basis,
-                                       return_in_frame_basis=return_in_frame_basis)
+        if self.frame_operator is None:
+            return to_array(operator)
+        else:
+            # conjugate and subtract the frame diagonal
+            return self._conjugate_and_add(t,
+                                           operator,
+                                           op_to_add_in_fb=-np.diag(self.frame_diag),
+                                           operator_in_frame_basis=operator_in_frame_basis,
+                                           return_in_frame_basis=return_in_frame_basis)
 
     def generator_out_of_frame(self,
                                t: float,
@@ -298,13 +300,15 @@ class BaseFrame(ABC):
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
         """
-
-        # conjugate and add the frame diagonal
-        return self._conjugate_and_add(-t,
-                                       operator,
-                                       op_to_add_in_fb=np.diag(self.frame_diag),
-                                       operator_in_frame_basis=operator_in_frame_basis,
-                                       return_in_frame_basis=return_in_frame_basis)
+        if self.frame_operator is None:
+            return to_array(operator)
+        else:
+            # conjugate and add the frame diagonal
+            return self._conjugate_and_add(-t,
+                                           operator,
+                                           op_to_add_in_fb=np.diag(self.frame_diag),
+                                           operator_in_frame_basis=operator_in_frame_basis,
+                                           return_in_frame_basis=return_in_frame_basis)
 
     @abstractmethod
     def operators_into_frame_basis_with_cutoff(self,
@@ -330,14 +334,15 @@ class Frame(BaseFrame):
 
     def __init__(self, frame_operator: Union[Operator, np.array]):
 
-        # if None, set to a 1d array of zeros
-        if frame_operator is None:
-            raise Exception("""frame_operator cannot be None.""")
-
         self._frame_operator = frame_operator
 
         # if frame_operator is a 1d array, assume already diagonalized
-        if isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
+        if frame_operator is None:
+            self._dim = None
+            self._frame_diag = None
+            self._frame_basis = None
+            self._frame_basis_adjoint = None
+        elif isinstance(frame_operator, np.ndarray) and frame_operator.ndim == 1:
 
             # verify that it is anti-hermitian (i.e. purely imaginary)
             if np.linalg.norm(frame_operator + frame_operator.conj()) > 1e-10:
@@ -347,6 +352,7 @@ class Frame(BaseFrame):
             self._frame_diag = frame_operator
             self._frame_basis = np.eye(len(frame_operator))
             self._frame_basis_adjoint = self.frame_basis
+            self._dim = len(self._frame_diag)
         # if not, diagonalize it
         else:
             # Ensure that it is an Operator object
@@ -364,8 +370,7 @@ class Frame(BaseFrame):
             self._frame_diag = -1j * frame_diag
             self._frame_basis = frame_basis
             self._frame_basis_adjoint = frame_basis.conj().transpose()
-
-        self._dim = len(self._frame_diag)
+            self._dim = len(self._frame_diag)
 
     @property
     def dim(self) -> int:
@@ -399,6 +404,9 @@ class Frame(BaseFrame):
         Returns:
             np.array: the state in the frame basis
         """
+        if self._frame_operator is None:
+            return to_array(y)
+
         return self.frame_basis_adjoint @ y
 
     def state_out_of_frame_basis(self, y: np.array) -> np.array:
@@ -409,6 +417,9 @@ class Frame(BaseFrame):
         Returns:
             np.array: the state in the frame basis
         """
+        if self._frame_operator is None:
+            return to_array(y)
+
         return self.frame_basis @ y
 
     def operator_into_frame_basis(self,
@@ -420,6 +431,8 @@ class Frame(BaseFrame):
         Returns:
             np.array: the operator in the frame basis
         """
+        if self._frame_operator is None:
+            return to_array(op)
 
         return self.frame_basis_adjoint @ to_array(op) @ self.frame_basis
 
@@ -432,6 +445,8 @@ class Frame(BaseFrame):
         Returns:
             np.array: the operator in the frame basis
         """
+        if self._frame_operator is None:
+            return to_array(op)
 
         return self.frame_basis @ to_array(op) @ self.frame_basis_adjoint
 
@@ -461,6 +476,8 @@ class Frame(BaseFrame):
             return_in_frame_basis: whether or not to return the result
                                    in the frame basis
         """
+        if self._frame_operator is None:
+            return to_array(y)
 
         out = y
 
@@ -489,6 +506,11 @@ class Frame(BaseFrame):
         Note: B is added in the frame basis before any potential final change
         out of the frame basis.
         """
+        if self._frame_operator is None:
+            if op_to_add_in_fb is None:
+                return to_array(operator)
+            else:
+                return to_array(operator + op_to_add_in_fb)
 
         out = to_array(operator)
 
@@ -541,9 +563,13 @@ class Frame(BaseFrame):
             carrier_freqs = np.zeros(len(operators))
 
         # create difference matrix for diagonal elements
-        dim = len(self.frame_diag)
-        D_diff = np.ones((dim, dim)) * self.frame_diag
-        D_diff = D_diff - D_diff.transpose()
+        dim = len(ops_in_frame_basis[0])
+        D_diff = None
+        if self._frame_operator is None:
+            D_diff = np.zeros((dim, dim))
+        else:
+            D_diff = np.ones((dim, dim)) * self.frame_diag
+            D_diff = D_diff - D_diff.transpose()
 
         # set up matrix encoding frequencies
         im_angular_freqs = 1j * 2 * np.pi * carrier_freqs

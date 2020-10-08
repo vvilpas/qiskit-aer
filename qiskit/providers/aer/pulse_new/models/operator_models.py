@@ -194,8 +194,7 @@ class OperatorModel(BaseOperatorModel):
         self.signal_mapping = signal_mapping
         self.signals = signals
 
-        # initialize flag that frame is None to True, then set frame
-        self._frame_is_None = True
+        # set frame
         self.frame = frame
 
         # initialize internal operator representation in the frame basis
@@ -272,15 +271,12 @@ class OperatorModel(BaseOperatorModel):
         """
 
         if frame is None:
-            self._frame_is_None = True
-            self._frame = Frame(np.zeros(self._operators[0].dim[0]))
+            self._frame = Frame(None)
         else:
             if isinstance(frame, Frame):
                 self._frame = frame
             else:
                 self._frame = Frame(frame)
-
-            self._frame_is_None = False
 
         self._reset_internal_ops()
 
@@ -328,7 +324,7 @@ class OperatorModel(BaseOperatorModel):
         """
 
         # for now if the frame operator is not None raise an error
-        if not self._frame_is_None:
+        if self.frame.frame_operator is not None:
             raise Exception("""The drift is currently ill-defined if
                                frame_operator is not None.""")
 

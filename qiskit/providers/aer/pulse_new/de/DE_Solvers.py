@@ -21,22 +21,53 @@ from .DE_Options import DE_Options
 from .type_utils import StateTypeConverter
 
 class BMDE_Solver:
-    """An intermediate interface to underlying DE solver methods."""
+    """Solver class for differential equations specified in
+    :class:`BMDE_Problem`. This class serves as an an intermediary between the
+    structures specified in :class:`BMDE_Problem`, and :class:`ODE_Method`
+    instances, which wrap numerical DE solving methods (and are agnostic to
+    the details of the computation of RHS functions).
+
+    This class is meant to be interacted with in a similar way to
+    :class:`ODE_Method`: the properties `t` and `y` are the time and state
+    of the DE respectively, and the `integrate` and `integrate_over_interval`
+    methods evolve the time and state.
+
+    Details:
+        - The state and time are fundamentally stored in the underlying
+          :class:`ODE_Method`, and the properties in this class retrieve and
+          set them. For the state this class provides a translation layer
+          between the format and frame the user expects and the format
+          and frame the DE is actually being solved in.
+        - Continuing the above point, the translation consists of:
+            - Deciding whether to translate states into/out of the frame
+              depending on which frame the user is in.
+            - Regardless of the previous point, the DE is always solved in a
+              basis in which the frame is diagonal, so transforming into/out of
+              this basis is always necessary when setting or getting the state.
+            - Lastly, the state_type_converter in the bmde_problem may further
+              transform the state, e.g. if the internally represented DE is
+              the vectorized version of a DE the user is working with.
+    """
 
     def __init__(self,
                  bmde_problem: BMDE_Problem,
                  method: Optional[ODE_Method] = None,
                  options: Optional[DE_Options] = None):
-        """fill in
+        """Construct a solver.
+
+        Args:
+            bmde_problem: Specification of the problem.
+            method: Specification of the underlying solver method.
+            options: Container class for options.
         """
 
         self._generator = bmde_problem._generator
 
-        # setup solver method
+        # Instantiate default options if none given
         if options is None:
             options = DE_Options()
 
-        # if no method explicitly provided, use the one in options
+        # if no method explicitly provided
         if method is None:
             method = options.method
 
@@ -46,7 +77,7 @@ class BMDE_Solver:
         elif issubclass(method, ODE_Method):
             Method = method
 
-        # instantiate method object with minimal parameters
+        # instantiate method object with minimal parameters, then populate
         t0 = bmde_problem.t0
         self._method = Method(t0, y0=None, rhs=None, options=options)
 
@@ -54,6 +85,8 @@ class BMDE_Solver:
         # or not
         self._user_in_frame = bmde_problem._user_in_frame
 
+        # set the initial state - state_type_converter needs to be specified
+        # first to enable automatic transformations
         self._state_type_converter = bmde_problem._state_type_converter
         if bmde_problem.y0 is not None:
             self.y = bmde_problem.y0
@@ -67,33 +100,32 @@ class BMDE_Solver:
 
     @property
     def t(self):
+        """Time stored in underlying method."""
         return self._method.t
 
     @t.setter
     def t(self, new_t):
+        """Time stored in underlying method."""
         self._method.t = new_t
 
     @property
     def y(self):
-        return self.get_y(return_in_frame=self._user_in_frame)
+        """Get y, returning in the user frame."""
+        return self._get_y(return_in_frame=self._user_in_frame)
 
     @y.setter
     def y(self, new_y):
+        """Set y, assuming it is specified in the user frame."""
         if new_y is not None:
-            self.set_y(new_y, y_in_frame=self._user_in_frame)
+            self._set_y(new_y, y_in_frame=self._user_in_frame)
 
-    def set_y(self, y: np.ndarray, y_in_frame: Optional[bool] = False):
-        """Set the state of the BMDE.
+    def _set_y(self, y: np.ndarray, y_in_frame: Optional[bool] = False):
+        """Internal routine for setting state of the system.
 
-        State is internally represented in the frame of the internal generator,
-        and in the basis in which the frame operator is diagonal.
-
-        Needs to:
+        Steps:
             - convert y to inner type of state
             - apply frame transformation if necessary
             - apply basis transformation to frame basis
-
-        Latter two points are done simultaneously
 
         Args:
             y: new state
@@ -107,10 +139,8 @@ class BMDE_Solver:
         else:
             new_y = self._state_type_converter.outer_to_inner(y)
 
-        # convert y into the frame for the bmde, and also into the frame basis
         if y_in_frame:
-            # if y is already in the frame, only need to convert into
-            # frame basis
+            # if y is already in the frame, just convert into frame basis
             new_y = self._generator.frame.state_into_frame_basis(new_y)
         else:
             # if y not in frame, convert it into frame and into frame basis
@@ -123,50 +153,48 @@ class BMDE_Solver:
         self._method.y = new_y
 
 
-    def get_y(self, return_in_frame: Optional[bool] = False):
-        """Return the state of the BMDE.
+    def _get_y(self, return_in_frame: Optional[bool] = False):
+        """Intenral routine for returning the state.
 
-        Needs to:
+        Steps:
             - take state out of frame basis
             - take state out of frame if necessary
             - convert to outer type
-
-        The first two points are done simultaneously
 
         Args:
             return_in_frame: whether or not to return in the solver frame
         """
 
+        # method state is in frame and frame basis
         return_y = self._method.y
 
         if return_in_frame:
-            # if the result is to be returned in frame, simply take the state out
-            # of the frame basis
+            # if state requested in frame, just take out of the frame basis
             return_y = self._generator.frame.state_out_of_frame_basis(return_y)
         else:
-            # if the result is to be returned out of the frame, apply the
-            # state_out_of_frame function and specify that the input is in
-            # the frame basis, but the return value should not be in the frame
-            # basis
+            # if state requested out of frame, map out of frame, requesting
+            # result be returned out of the frame basis
             return_y = self._generator.frame.state_out_of_frame(self.t,
-                                                          return_y,
-                                                          y_in_frame_basis=True,
-                                                          return_in_frame_basis=False)
+                                                                return_y,
+                                                                y_in_frame_basis=True,
+                                                                return_in_frame_basis=False)
 
+        # convert to outer type
         if self._state_type_converter is None:
             return return_y
         else:
             return self._state_type_converter.inner_to_outer(return_y)
 
-    def integrate(self, tf):
-        """Integrate up to a time tf.
+    def integrate(self, tf: float, **kwargs):
+        """Evolve the DE forward up to a time tf, with additional keyword
+        arguments for the underlying method.
         """
-        self._method.integrate(tf)
+        self._method.integrate(tf, **kwargs)
 
-    def integrate_over_interval(self, y0, interval):
-        """
-        Integrate over an interval=[t0,tf] with a given initial state
+    def integrate_over_interval(self, y0, interval, **kwargs):
+        """Integrate over an interval=[t0,tf] with a given initial state,
+        with additional keyword arguments for the underlying method.
         """
         self.t = interval[0]
         self.y = y0
-        self.integrate(interval[1])
+        self.integrate(interval[1], **kwargs)
