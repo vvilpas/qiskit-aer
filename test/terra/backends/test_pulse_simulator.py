@@ -34,7 +34,7 @@ from qiskit.providers.aer.pulse.system_models.pulse_system_model import PulseSys
 from qiskit.providers.aer.pulse.system_models.hamiltonian_model import HamiltonianModel
 from qiskit.providers.models.backendconfiguration import UchannelLO
 
-from .pulse_sim_independent import (simulate_1q_model, simulate_2q_exchange_model,
+from test.terra.backends.pulse_sim_independent import (simulate_1q_model, simulate_2q_exchange_model,
                                     simulate_3d_oscillator_model)
 
 

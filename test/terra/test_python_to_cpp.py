@@ -13,7 +13,6 @@
 import sys
 import unittest
 import numpy as np
-from qiskit.providers.aer.pulse.qutip_extra_lite.qobj import Qobj
 from qiskit.providers.aer.pulse.controllers.test_python_to_cpp import \
     test_py_list_to_cpp_vec, test_py_list_of_lists_to_cpp_vector_of_vectors,\
     test_py_dict_string_numeric_to_cpp_map_string_numeric,\
