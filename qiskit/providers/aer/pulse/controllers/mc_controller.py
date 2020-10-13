@@ -25,7 +25,7 @@ from qiskit.tools.parallel import parallel_map, CPU_COUNT
 from .pulse_sim_options import PulseSimOptions
 from .pulse_de_solver import setup_de_solver
 #from .pulse_utils import (cy_expect_psi_csr, occ_probabilities, write_shots_memory, spmv_csr)
-from .pulse_utils import (occ_probabilities, write_shots_memory)
+from .pulse_utils import (occ_probabilities, write_shots_memory, spmv, cy_expect_psi)
 
 dznrm2 = get_blas_funcs("znrm2", dtype=np.float64)
 
@@ -194,30 +194,20 @@ def monte_carlo_evolution(seed,
                 collapse_times.append(ODE.t)
                 # all constant collapse operators.
                 for i in range(n_dp.shape[0]):
-                    # n_dp[i] = cy_expect_psi_csr(pulse_de_model.n_ops_data[i],
+                    n_dp[i] = cy_expect_psi(pulse_de_model.n_ops_data[i], ODE.y, True)
                     #                             pulse_de_model.n_ops_ind[i],
                     #                             pulse_de_model.n_ops_ptr[i],
-                    #                             ODE.y, True)
-                    n_dp[i] = ODE.y.conjugate() @ pulse_de_model.n_ops_data[i] @ ODE.y
+                    #                       ODE.y, True)
+                    #n_dp[i] = ODE.y.conjugate() @ pulse_de_model.n_ops_data[i] @ ODE.y
                 # determine which operator does collapse and store it
-
-                file_out = open("dum_1Q.txt", "a")
-                file_out.write("t: {}  n_dp: {}   rand_vals: {}\n".format(stop_time, n_dp[0], rand_vals[0]))
-
                 _p = np.cumsum(n_dp / np.sum(n_dp))
                 j = cinds[_p >= rand_vals[1]][0]
                 collapse_operators.append(j)
 
-                # state = spmv_csr(pulse_de_model.c_ops_data[j],
-                #                  pulse_de_model.c_ops_ind[j],
-                #                  pulse_de_model.c_ops_ptr[j],
-                #                  ODE.y)
-
-                state = pulse_de_model.c_ops_data[j] @ ODE.y
-                file_out.write("t: {}  state: {}   rand_vals: {}\n".format(stop_time, state, rand_vals[0]))
+                state = spmv(pulse_de_model.c_ops_data[j], ODE.y)
+                #state = pulse_de_model.c_ops_data[j] @ ODE.y
 
                 state /= dznrm2(state)
-                file_out.write("t: {}  state:-dzrnm {}   rand_vals: {}\n".format(stop_time, state, rand_vals[0]))
                 ODE.y = state
                 rand_vals = rng.rand(2)
 
