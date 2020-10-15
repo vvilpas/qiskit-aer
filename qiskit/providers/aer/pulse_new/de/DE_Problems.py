@@ -14,6 +14,7 @@
 
 import numpy as np
 from typing import Union, List, Optional
+from warnings import warn
 
 from qiskit.quantum_info.operators import Operator
 from qiskit.providers.aer.pulse_new.models.frame import BaseFrame
@@ -88,6 +89,11 @@ class BMDE_Problem:
             # if the generator has a frame specified, leave it as,
             # and specify that the user is in the frame
             self._user_in_frame = True
+            
+            if frame != 'auto':
+                warn("""A frame was specified in both the generator and in the
+                        BMDE problem. Defaulting to use the generator frame
+                        and return results in that frame.""")
         else:
             # if auto, go into the drift part of the generator, otherwise
             # set it to whatever is passed

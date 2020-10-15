@@ -12,6 +12,7 @@
 """tests for DE_Problems.py"""
 
 import unittest
+import warnings
 import numpy as np
 
 from qiskit.quantum_info.operators import Operator
@@ -95,6 +96,20 @@ class TestDE_Problems(unittest.TestCase):
                                         cutoff_freq=1.)
         except Exception as e:
             self.assertTrue('Cutoff frequency' in str(e))
+
+    def test_double_frame_warning(self):
+        """Test that specifying a frame in the model and when constructing
+        the BMDE problem raises a warning.
+        """
+        self.basic_model.frame = np.array(-1j * np.array([-1, 1]))
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter("always")
+            bmde_problem = BMDE_Problem(generator=self.basic_model,
+                                        y0=self.y0,
+                                        t0=0.,
+                                        frame=None)
+            self.assertEqual(len(ws), 1)
+            self.assertTrue('A frame' in str(ws[-1].message))
 
 
     def assertAlmostEqual(self, A, B, tol=10**-15):

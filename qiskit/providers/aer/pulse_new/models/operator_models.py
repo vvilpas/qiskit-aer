@@ -190,7 +190,6 @@ class OperatorModel(BaseOperatorModel):
         # initialize signal-related attributes
         self._signal_params = None
         self._signals = None
-        self._carrier_freqs = None
         self.signal_mapping = signal_mapping
         self.signals = signals
 
@@ -222,7 +221,6 @@ class OperatorModel(BaseOperatorModel):
         if signals is None:
             self._signal_params = None
             self._signals = None
-            self._carrier_freqs = None
         else:
 
             # if a signal_mapping is specified, take signals as the input
