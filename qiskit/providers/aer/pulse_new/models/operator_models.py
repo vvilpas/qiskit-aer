@@ -379,7 +379,7 @@ class OperatorModel(BaseOperatorModel):
         `Frame.operators_into_frame_basis_with_cutoff`.
 
         Args:
-            coeffs: Signals evaluated at some time.
+            sig_vals: Signals evaluated at some time.
         """
         return 0.5 * (np.tensordot(sig_vals, self._ops_in_fb_w_cutoff, axes=1)
                       + np.tensordot(sig_vals.conj(),
