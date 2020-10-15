@@ -22,7 +22,7 @@ from .type_utils import StateTypeConverter
 
 class BMDE_Solver:
     """Solver class for differential equations specified in
-    :class:`BMDE_Problem`. This class serves as an an intermediary between the
+    :class:`BMDE_Problem`. This class serves as an intermediary between the
     structures specified in :class:`BMDE_Problem`, and :class:`ODE_Method`
     instances, which wrap numerical DE solving methods (and are agnostic to
     the details of the computation of RHS functions).
