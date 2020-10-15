@@ -33,7 +33,7 @@ class BaseOperatorModel(ABC):
         - A "drift", which is meant to return the "time-independent" part of
           :math:`G(t)`
         - A "frame", here specified as a :class:`BaseFrame` object, which
-          representing an anti-Hermitian operator :math:`F`, specifying
+          represents an anti-Hermitian operator :math:`F`, specifying
           the transformation :math:`G(t) \mapsto G'(t) = e^{-tF}G(t)e^{tF} - F`.
 
           If a frame is set, the evaluation functions are modified to work
