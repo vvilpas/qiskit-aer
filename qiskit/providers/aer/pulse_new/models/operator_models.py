@@ -243,21 +243,15 @@ class OperatorModel(BaseOperatorModel):
                 raise Exception("""signals needs to have the same length as
                                     operators.""")
 
-            # update internal carrier freqs and signals
-            self.carrier_freqs = signals.carrier_freqs
+            # determine if new signals warrant resetting of internal operators
+            # only necessary if new carrier frequencies are different from
+            # previous, and there is a cutoff frequency
+            if self._signals is not None:
+                if (any(self._signals.carrier_freqs != signals.carrier_freqs)
+                    and self._cutoff_freq is not None):
+                    self._reset_internal_ops()
+
             self._signals = signals
-
-    @property
-    def carrier_freqs(self) -> np.array:
-        """Return the internally stored carrier frequencies."""
-        return self._carrier_freqs
-
-    @carrier_freqs.setter
-    def carrier_freqs(self, carrier_freqs) -> np.array:
-        """Set the internally stored carrier frequencies."""
-        if any(carrier_freqs != self._carrier_freqs):
-            self._carrier_freqs = carrier_freqs
-            self._reset_internal_ops()
 
     @property
     def frame(self) -> Frame:
@@ -305,11 +299,11 @@ class OperatorModel(BaseOperatorModel):
             np.array: the evaluated model
         """
 
-        if self.signals is None:
+        if self._signals is None:
             raise Exception("""OperatorModel cannot be
                                evaluated without signals.""")
 
-        sig_vals = self.signals.value(time)
+        sig_vals = self._signals.value(time)
 
         op_combo = self._evaluate_linear_combo(sig_vals)
         return self.frame.generator_into_frame(time,
@@ -328,7 +322,7 @@ class OperatorModel(BaseOperatorModel):
             raise Exception("""The drift is currently ill-defined if
                                frame_operator is not None.""")
 
-        drift_sig_vals = self.signals.drift_array
+        drift_sig_vals = self._signals.drift_array
 
         return self._evaluate_linear_combo(drift_sig_vals)
 
@@ -339,10 +333,10 @@ class OperatorModel(BaseOperatorModel):
         with frequency cutoffs applied.
         """
         carrier_freqs = None
-        if self.carrier_freqs is None:
+        if self._signals.carrier_freqs is None:
             carrier_freqs = np.zeros(len(self._operators))
         else:
-            carrier_freqs = self.carrier_freqs
+            carrier_freqs = self._signals.carrier_freqs
 
         self.__ops_in_fb_w_cutoff, self.__ops_in_fb_w_conj_cutoff = (
             self.frame.operators_into_frame_basis_with_cutoff(self._operators,
