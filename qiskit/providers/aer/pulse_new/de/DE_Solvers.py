@@ -127,7 +127,7 @@ class BMDE_Solver:
         """Internal routine for setting state of the system.
 
         Steps:
-            - convert y to inner type of state
+            - convert y to inner type of state which the solver works with
             - apply frame transformation if necessary
             - apply basis transformation to frame basis
 
