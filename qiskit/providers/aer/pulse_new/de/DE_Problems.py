@@ -65,7 +65,22 @@ class BMDE_Problem:
                  frame: Optional[Union[str, Operator, np.ndarray, BaseFrame]] = 'auto',
                  cutoff_freq: Optional[float] = None,
                  state_type_converter: Optional[StateTypeConverter] = None):
-        """Specify the BMDE problem, as described in the class doc string."""
+        """Specify a BMDE problem.
+
+        Args:
+            generator: The generator.
+            y0: The initial state of the BMDE.
+            t0: Initial time.
+            interval: The interval of the BMDE
+                      (specify only one of t0 or interval).
+            frame: The frame to solve the system in. If the generator already
+                   has a frame specified, the problem will default to using
+                   that frame and returning results in that frame.
+            cutoff_freq: Cutoff frequency to use when solving the BMDE.
+            state_type_converter: Optional setting for translating between
+                                  the state type the user interacts with
+                                  to the state type the solver needs.
+        """
 
         # set state and time parameters
         self.y0 = y0
@@ -89,7 +104,7 @@ class BMDE_Problem:
             # if the generator has a frame specified, leave it as,
             # and specify that the user is in the frame
             self._user_in_frame = True
-            
+
             if frame != 'auto':
                 warn("""A frame was specified in both the generator and in the
                         BMDE problem. Defaulting to use the generator frame

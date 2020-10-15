@@ -15,7 +15,7 @@ from typing import Callable, Union, List, Optional
 import numpy as np
 from copy import deepcopy
 
-from .signals import VectorSignal, Signal
+from .signals import VectorSignal, BaseSignal
 from .frame import BaseFrame, Frame
 from qiskit.quantum_info.operators import Operator
 
@@ -162,9 +162,9 @@ class OperatorModel(BaseOperatorModel):
 
     def __init__(self,
                  operators: List[Operator],
-                 signals: Optional[Union[VectorSignal, List[Signal]]] = None,
+                 signals: Optional[Union[VectorSignal, List[BaseSignal]]] = None,
                  signal_mapping: Optional[Callable] = None,
-                 frame: Optional[Union[Operator, np.array, Frame]] = None,
+                 frame: Optional[Union[Operator, np.array, BaseFrame]] = None,
                  cutoff_freq: Optional[float] = None):
         """Initialize.
 
@@ -206,7 +206,7 @@ class OperatorModel(BaseOperatorModel):
         return self._signals
 
     @signals.setter
-    def signals(self, signals: Union[VectorSignal, List[Signal]]):
+    def signals(self, signals: Union[VectorSignal, List[BaseSignal]]):
         """Set the signals.
 
         Behavior:
@@ -303,7 +303,9 @@ class OperatorModel(BaseOperatorModel):
 
         sig_vals = self._signals.value(time)
 
-        op_combo = self._evaluate_linear_combo(sig_vals)
+        # evaluate the linear combination in the frame basis with cutoffs,
+        # then map into the frame
+        op_combo = self._evaluate_in_frame_basis_with_cutoffs(sig_vals)
         return self.frame.generator_into_frame(time,
                                                op_combo,
                                                operator_in_frame_basis=True,
@@ -322,13 +324,13 @@ class OperatorModel(BaseOperatorModel):
 
         drift_sig_vals = self._signals.drift_array
 
-        return self._evaluate_linear_combo(drift_sig_vals)
+        return self._evaluate_in_frame_basis_with_cutoffs(drift_sig_vals)
 
     def _construct_ops_in_fb_w_cutoff(self):
         """Construct versions of operators in frame basis with cutoffs
         and conjugate cutoffs. To be used in conjunction with
-        _evaluate_linear_combo to compute the operator in the frame basis
-        with frequency cutoffs applied.
+        operators_into_frame_basis_with_cutoff to compute the operator in the
+        frame basis with frequency cutoffs applied.
         """
         carrier_freqs = None
         if self._signals.carrier_freqs is None:
@@ -350,7 +352,10 @@ class OperatorModel(BaseOperatorModel):
 
     @property
     def _ops_in_fb_w_cutoff(self):
-        """Internally stored operators in frame basis with cutoffs."""
+        """Internally stored operators in frame basis with cutoffs.
+        This corresponds to the :math:`A^+` matrices from
+        `Frame.operators_into_frame_basis_with_cutoff`.
+        """
         if self.__ops_in_fb_w_cutoff is None:
             self._construct_ops_in_fb_w_cutoff()
 
@@ -358,17 +363,25 @@ class OperatorModel(BaseOperatorModel):
 
     @property
     def _ops_in_fb_w_conj_cutoff(self):
-        """Internally stored operators in frame basis with conjugate cutoffs."""
+        """Internally stored operators in frame basis with conjugate cutoffs.
+        This corresponds to the :math:`A^-` matrices from
+        `Frame.operators_into_frame_basis_with_cutoff`.
+        """
         if self.__ops_in_fb_w_conj_cutoff is None:
             self._construct_ops_in_fb_w_cutoff()
 
         return self.__ops_in_fb_w_conj_cutoff
 
-    def _evaluate_linear_combo(self, coeffs):
-        """Evaluate the operator with a given list of signal values
-        (including carrier frequencies).
+    def _evaluate_in_frame_basis_with_cutoffs(self,
+                                              sig_vals: np.array):
+        """Evaluate the operator in the frame basis with frequency cutoffs.
+        The computation here corresponds to that prescribed in
+        `Frame.operators_into_frame_basis_with_cutoff`.
+
+        Args:
+            coeffs: Signals evaluated at some time.
         """
-        return 0.5 * (np.tensordot(coeffs, self._ops_in_fb_w_cutoff, axes=1)
-                      + np.tensordot(coeffs.conj(),
+        return 0.5 * (np.tensordot(sig_vals, self._ops_in_fb_w_cutoff, axes=1)
+                      + np.tensordot(sig_vals.conj(),
                                      self._ops_in_fb_w_conj_cutoff,
                                      axes=1))

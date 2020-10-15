@@ -66,8 +66,6 @@ class BaseFrame(ABC):
     information and carrier frequency information are intrinsically tied
     together in this context.
 
-    ***This needs to be filled out/explained***
-
     Note: all abstract doc strings are written in a numpy style
     """
 
@@ -84,12 +82,14 @@ class BaseFrame(ABC):
     @property
     @abstractmethod
     def frame_basis(self) -> np.array:
-        """Array containing diagonalizing unitary."""
+        """Array containing the unitary :math:`U` that diagonalizes the
+        frame operator, i.e. :math:`U` such that :math:`F = U D U^\dagger`.
+        """
 
     @property
     @abstractmethod
     def frame_basis_adjoint(self) -> np.array:
-        """Adjoint of the diagonalizing unitary."""
+        """Adjoint of self.frame_basis."""
 
     @abstractmethod
     def state_into_frame_basis(self, y: np.array) -> np.array:
@@ -141,6 +141,16 @@ class BaseFrame(ABC):
     def operators_into_frame_basis(self,
                                    operators: Union[List[Operator], np.array]) -> np.array:
         """Given a list of operators, apply self.operator_into_frame_basis to
+        all and return as a 3d array.
+
+        Args:
+            operators: list of operators
+        """
+
+    @abstractmethod
+    def operators_out_of_frame_basis(self,
+                                     operators: Union[List[Operator], np.array]) -> np.array:
+        """Given a list of operators, apply self.operator_out_of_frame_basis to
         all and return as a 3d array.
 
         Args:
@@ -315,10 +325,87 @@ class BaseFrame(ABC):
                                                operators: Union[np.array, List[Operator]],
                                                cutoff_freq: Optional[float] = None,
                                                carrier_freqs: Optional[np.array] = None):
-        """Transform operators into the frame basis, and set operator entries
-        with frequencies above the cutoff to 0.
+        """Transform operators into the frame basis, and return two lists of
+        operators: one with the 'frequency cutoff' and one with 'conjugate
+        frequency cutoff' (explained below). This serves as a helper function
+        for evaluating a time-dependent operator :math:`A(t)` specified as a
+        linear combination of terms with carrier frequencies, in the frame
+        :math:`F` with a cutoff frequency (in the frame basis).
 
-        ****Should put a mathematical description here***
+        In particular, this function assumes the operator :math:`A(t)` is
+        specified as:
+
+        .. math::
+            A(t) = \sum_j Re[f_j(t) e^{i 2 \pi \nu_j t}] A_j
+
+        For some functions :math:`f_j`, carrier frequencies :math:`nu_j`,
+        and operators :math:`A_j`.
+
+        Assume we are already in a basis in which :math:`F` is diagonal, and
+        let :math:`D=F`. As described elsewhere in the docstrings for this
+        class, evaluating :math:`A(t)` in this frame at a time :math:`t`
+        means computing :math:`\exp(-t D)A(t)\exp(tD)`. The benefit of working
+        in the basis in which the frame is diagonal is that this computation
+        simplifies to:
+
+        .. math::
+            [\exp( (-d_j + d_k) t)] \odot A(t),
+
+        where above :math:`[\exp( (-d_j + d_k) t)]` denotes the matrix whose
+        :math:`(j,k)` entry is :math:`\exp( (-d_j + d_k) t)`, and :math:`\odot`
+        denotes entrywise multiplication.
+
+        Evaluating the above with 'frequency cutoffs' requires expanding
+        :math:`A(t)` into its linear combination. A single term in the sum
+        (dropping the summation subscript) is:
+
+        .. math::
+            Re[f(t) e^{i 2 \pi \nu t}] [\exp( (-d_j + d_k) t)] \odot A.
+
+        Next, we expand this further using
+
+        .. math::
+            Re[f(t) e^{i 2 \pi \nu t}] =
+                \frac{1}{2}(f(t) e^{i 2 \pi \nu t} + \overline{f(t)} e^{-i 2 \pi \nu t})
+
+        to get:
+
+        .. math::
+            \frac{1}{2}f(t) e^{i 2 \pi \nu t} [\exp( (-d_j + d_k) t)] \odot A +
+                \frac{1}{2}\overline{f(t)} e^{-i 2 \pi \nu t} [\exp( (-d_j + d_k) t)] \odot A
+
+        Examining the first term in the sum, the 'frequency' associated with
+        matrix element :math:`(j,k)` is
+        :math:`\nu + \frac{Im[-d_j + d_k]}{2 \pi}`, and similarly for the
+        second term: :math:`-\nu + \frac{Im[-d_j + d_k]}{2 \pi}`.
+
+        Evaluating the above expression with a 'frequency cutoff' :math:`\nu_*`
+        means computing it, but setting all matrix elements in either term
+        with a frequency above :math:`\nu_*` to zero. This can be achieved
+        by defining two matrices :math:`A^\pm` to be equal to :math:`A`,
+        except the :math:`(j,k)` is set to zero if
+        :math:`\pm\nu + \frac{Im[-d_j + d_k]}{2 \pi} \geq \nu_*`.
+
+        Thus, the above expression is evaluated with frequency cutoff via
+
+        .. math::
+            \frac{1}{2}f(t) e^{i 2 \pi \nu t} [\exp( (-d_j + d_k) t)] \odot A^+ +
+                \frac{1}{2}\overline{f(t)} e^{-i 2 \pi \nu t} [\exp( (-d_j + d_k) t)] \odot A^-
+
+        Relative to the initial list of operators :math:`A_j`, this function
+        returns two lists of matrices as a 3d array: :math:`A_j^+` and
+        :math:`A_j^-`, corresponding to :math:`A_j` with frequency cutoffs and
+        'conjugate' frequency cutoffs, in the basis in which the frame has
+        been diagonalized.
+
+        To use the output of this function to evalute the original operator
+        :math:`A(t)` in the frame, compute the linear combination
+
+        .. math::
+            \frac{1}{2} \sum_j f_j(t) e^{i 2 \pi \nu t} A_j^+ + \overline{f(t)} e^{-i 2 \pi \nu t} A_j^-
+
+        then use `self.operator_into_frame` or `self.generator_into_frame`
+        the frame transformation as required, using `operator_in_frame=True`.
 
         Args:
             operators: list of operators
@@ -326,13 +413,20 @@ class BaseFrame(ABC):
             carrier_freqs: list of carrier frequencies
 
         Returns:
-            Tuple[np.array, np.array]:
+            Tuple[np.array, np.array]: The operators with frequency cutoff
+            and conjugate frequency cutoff.
         """
 
 
 class Frame(BaseFrame):
+    """Concrete implementation of BaseFrame using numpy arrays."""
 
     def __init__(self, frame_operator: Union[Operator, np.array]):
+        """Initialize with a frame operator.
+
+        Args:
+            frame_operator: the frame operator, assumed to be anti-Hermitian.
+        """
 
         self._frame_operator = frame_operator
 
@@ -461,6 +555,17 @@ class Frame(BaseFrame):
 
         return np.array([self.operator_into_frame_basis(o) for o in operators])
 
+    def operators_out_of_frame_basis(self,
+                                   operators: Union[List[Operator], np.array]) -> np.array:
+        """Given a list of operators, perform a change of basis on all out of
+        the frame basis, and return as a 3d array.
+
+        Args:
+            operators: list of operators
+        """
+
+        return np.array([self.operator_out_of_frame_basis(o) for o in operators])
+
     def state_into_frame(self,
                          t: float,
                          y: np.array,
@@ -538,10 +643,9 @@ class Frame(BaseFrame):
                                                operators: Union[np.array, List[Operator]],
                                                cutoff_freq: Optional[float] = None,
                                                carrier_freqs: Optional[np.array] = None):
-        """Transform operators into the frame basis, and set operator entries
-        with frequencies above the cutoff to 0.
-
-        ****Should put a mathematical description here***
+        """Transform operators into the frame basis, and return two lists of
+        operators: one with the 'frequency cutoff' and one with 'conjugate
+        frequency cutoff' (see base class documentation).
 
         Args:
             operators: list of operators
@@ -549,7 +653,8 @@ class Frame(BaseFrame):
             carrier_freqs: list of carrier frequencies
 
         Returns:
-            Tuple[np.array, np.array]:
+            Tuple[np.array, np.array]: The operators with frequency cutoff
+            and conjugate frequency cutoff.
         """
 
         ops_in_frame_basis = self.operators_into_frame_basis(operators)
@@ -582,8 +687,15 @@ class Frame(BaseFrame):
                 cutoff_array.transpose([0, 2, 1]) * ops_in_frame_basis)
 
 
-# type handling
-def to_array(op):
+def to_array(op: Union[Operator, np.array]):
+    """Convert an operator, either specified as an `Operator` or an array
+    to an array.
+
+    Args:
+        op: the operator to represent as an array.
+    Returns:
+        np.array: op as an array
+    """
     if isinstance(op, Operator):
         return op.data
     return op

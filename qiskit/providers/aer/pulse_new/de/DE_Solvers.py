@@ -99,13 +99,17 @@ class BMDE_Solver:
         self._method.set_rhs(rhs_dict)
 
     @property
-    def t(self):
+    def t(self) -> float:
         """Time stored in underlying method."""
         return self._method.t
 
     @t.setter
-    def t(self, new_t):
-        """Time stored in underlying method."""
+    def t(self, new_t: float):
+        """Time stored in underlying method.
+
+        Args:
+            new_t: New time.
+        """
         self._method.t = new_t
 
     @property
