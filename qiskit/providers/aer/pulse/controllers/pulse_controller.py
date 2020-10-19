@@ -20,7 +20,7 @@ Entry/exit point for pulse simulation specified through PulseSimulator backend
 from warnings import warn
 import numpy as np
 from ..system_models.string_model_parser.string_model_parser import NoiseParser
-from ..qutip_extra_lite import qobj_generators as qobj_gen
+from ..system_models.string_model_parser import qobj_generators as qobj_gen
 from .digest_pulse_qobj import digest_pulse_qobj
 from .pulse_sim_options import PulseSimOptions
 from .unitary_controller import run_unitary_experiments
@@ -84,7 +84,7 @@ def pulse_controller(qobj, system_model, backend_options):
 
     # initial state set here
     if 'initial_state' in backend_options:
-        pulse_sim_desc.initial_state = qobj_gen.state(backend_options['initial_state']) #Qobj(backend_options['initial_state'])
+        pulse_sim_desc.initial_state = qobj_gen.state(backend_options['initial_state'])
     else:
         pulse_sim_desc.initial_state = estates[0]
 
@@ -408,6 +408,7 @@ class PulseInternalDEModel:
             H = H + [H_noise]
 
         # construct data sets
+        # TODO: Pass just the array
         self.h_ops_data = [-1.0j * hpart.data.flatten() for hpart in H]
         self.h_ops_ind = np.array([hpart.data.shape[0] for hpart in H])
         self.h_ops_ptr = np.array([hpart.data.shape[1] for hpart in H])

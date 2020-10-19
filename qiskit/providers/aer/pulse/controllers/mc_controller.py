@@ -24,7 +24,6 @@ from scipy.linalg.blas import get_blas_funcs
 from qiskit.tools.parallel import parallel_map, CPU_COUNT
 from .pulse_sim_options import PulseSimOptions
 from .pulse_de_solver import setup_de_solver
-#from .pulse_utils import (cy_expect_psi_csr, occ_probabilities, write_shots_memory, spmv_csr)
 from .pulse_utils import (occ_probabilities, write_shots_memory, spmv, cy_expect_psi)
 
 dznrm2 = get_blas_funcs("znrm2", dtype=np.float64)
@@ -47,10 +46,10 @@ def run_monte_carlo_experiments(pulse_sim_desc, pulse_de_model, solver_options=N
 
     solver_options = PulseSimOptions() if solver_options is None else solver_options
 
-    # if not pulse_sim_desc.initial_state.isket:
-    #     raise Exception("Initial state must be a state vector.")
+    if not pulse_sim_desc.initial_state.data.ndim != 1:
+        raise Exception("Initial state must be a state vector.")
 
-    y0 = pulse_sim_desc.initial_state.data.ravel() #.full().ravel()
+    y0 = pulse_sim_desc.initial_state.data.ravel()
 
     # set num_cpus to the value given in settings if none in Options
     if not solver_options.num_cpus:
@@ -62,7 +61,7 @@ def run_monte_carlo_experiments(pulse_sim_desc, pulse_de_model, solver_options=N
     for exp in pulse_sim_desc.experiments:
         exp['seed'] = prng.randint(np.iinfo(np.int32).max - 1)
 
-    map_kwargs = {'num_processes': 1} #solver_options.num_cpus}
+    map_kwargs = {'num_processes': solver_options.num_cpus}
 
     exp_results = []
     exp_times = []
@@ -195,18 +194,12 @@ def monte_carlo_evolution(seed,
                 # all constant collapse operators.
                 for i in range(n_dp.shape[0]):
                     n_dp[i] = cy_expect_psi(pulse_de_model.n_ops_data[i], ODE.y, True)
-                    #                             pulse_de_model.n_ops_ind[i],
-                    #                             pulse_de_model.n_ops_ptr[i],
-                    #                       ODE.y, True)
-                    #n_dp[i] = ODE.y.conjugate() @ pulse_de_model.n_ops_data[i] @ ODE.y
                 # determine which operator does collapse and store it
                 _p = np.cumsum(n_dp / np.sum(n_dp))
                 j = cinds[_p >= rand_vals[1]][0]
                 collapse_operators.append(j)
 
                 state = spmv(pulse_de_model.c_ops_data[j], ODE.y)
-                #state = pulse_de_model.c_ops_data[j] @ ODE.y
-
                 state /= dznrm2(state)
                 ODE.y = state
                 rand_vals = rng.rand(2)
