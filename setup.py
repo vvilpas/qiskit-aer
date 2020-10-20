@@ -37,7 +37,6 @@ common_requirements = [
     'numpy>=1.16.3,<1.19.0;python_version<"3.6"',
     'scipy>=1.0;python_version>"3.5"',
     'scipy>=1.0,<1.5.0;python_version<"3.6"',
-    'cython>=0.27.1',
     'pybind11>=2.4'  # This isn't really an install requirement,
                      # Pybind11 is required to be pre-installed for
                      # CMake to successfully find header files.
