@@ -26,19 +26,28 @@
 
 namespace AER {
 
+
+void load_openmp_if_needed(const json_t &qobj_js);
+
 template <class controller_t>
 Result controller_execute(const json_t &qobj_js) {
   controller_t controller;
 
-  // Fix for MacOS and OpenMP library double initialization crash.
-  // Issue: https://github.com/Qiskit/qiskit-aer/issues/1
-  if (JSON::check_key("config", qobj_js)) {
-    std::string path;
-    JSON::get_value(path, "library_dir", qobj_js["config"]);
-    Hacks::maybe_load_openmp(path);
-  }
+  load_openmp_if_needed(qobj_js);
 
   return controller.execute(qobj_js);
+}
+
+void load_openmp_if_needed(const json_t &qobj_js){
+    static bool loaded = false;
+    // Fix for MacOS and OpenMP library double initialization crash.
+    // Issue: https://github.com/Qiskit/qiskit-aer/issues/1
+    if (!loaded && JSON::check_key("config", qobj_js)) {
+        std::string path;
+        JSON::get_value(path, "library_dir", qobj_js["config"]);
+        Hacks::maybe_load_openmp(path);
+        loaded = true;
+    }
 }
 
 } // end namespace AER
