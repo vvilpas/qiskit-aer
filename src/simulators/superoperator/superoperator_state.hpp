@@ -355,7 +355,7 @@ template <class data_t> void State<data_t>::initialize_omp() {
 
 template <class data_t>
 void State<data_t>::allocate(uint_t num_qubits, uint_t block_bits){
-    BaseState::qreg_.chunk_setup(num_qubits * 4, num_qubits * 4, 0, 1);
+    BaseState::qreg_.chunk_setup(num_qubits * 2, num_qubits * 2, 0, 1);
 }
 
 //=========================================================================
